@@ -1,0 +1,12 @@
+export { PurchasedGoodsForm } from "./purchased-goods-form";
+export { CapitalGoodsForm } from "./capital-goods-form";
+export { FuelEnergyForm } from "./fuel-energy-form";
+export { TransportForm } from "./transport-form";
+export { WasteForm } from "./waste-form";
+export { BusinessTravelForm } from "./business-travel-form";
+export { EmployeeCommutingForm } from "./employee-commuting-form";
+export { UpstreamLeasedForm } from "./upstream-leased-form";
+export { ProductProcessingForm } from "./product-processing-form";
+export { ProductUseForm } from "./product-use-form";
+export { EndOfLifeForm } from "./end-of-life-form";
+export { DownstreamLeasedForm } from "./downstream-leased-form";

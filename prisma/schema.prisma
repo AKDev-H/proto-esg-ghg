@@ -1,0 +1,569 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+enum Country {
+    US
+    MY
+}
+
+enum UserRole {
+    super_admin
+    org_admin
+    sustainability_manager
+    data_entry_staff
+    viewer
+}
+
+enum IndustryType {
+    automotive
+    electronics
+    food_beverage
+    chemicals
+    textiles
+    plastics
+    metals
+    machinery
+    paper_packaging
+    other
+}
+
+enum EmissionScope {
+    scope1
+    scope2
+    scope3
+}
+
+enum Scope3Category {
+    cat1_purchased_goods
+    cat2_capital_goods
+    cat3_fuel_energy
+    cat4_upstream_transport
+    cat5_waste
+    cat6_business_travel
+    cat7_employee_commuting
+    cat8_upstream_leased
+    cat9_downstream_transport
+    cat10_product_processing
+    cat11_product_use
+    cat12_end_of_life
+    cat13_downstream_leased
+}
+
+enum DataStatus {
+    draft
+    submitted
+    approved
+    rejected
+}
+
+enum ReportingStatus {
+    draft
+    submitted
+    approved
+    verified
+}
+
+enum ReportType {
+    esg_summary
+    detailed
+}
+
+enum TransportMode {
+    truck
+    rail
+    ship
+    aircraft
+    pipeline
+    van
+}
+
+enum DisposalType {
+    landfill
+    incineration
+    recycling
+    composting
+    energy_recovery
+}
+
+enum ApprovalStatus {
+    pending
+    approved
+    rejected
+}
+
+model Organization {
+    id            String       @id @default(cuid())
+    name          String
+    slug          String       @unique
+    country       Country
+    currency      String
+    reportingYear Int
+    industryType  IndustryType
+    settings      Json?
+    createdAt     DateTime     @default(now())
+    updatedAt     DateTime     @updatedAt
+
+    users           User[]
+    facilities      Facility[]
+    reportingYears  ReportingYear[]
+    emissionFactors EmissionFactor[]
+    suppliers       Supplier[]
+    products        Product[]
+    reports         Report[]
+    auditLogs       AuditLog[]
+    activityDatas   ActivityData[]
+
+    @@index([slug])
+    @@index([country])
+}
+
+model User {
+    id             String   @id @default(cuid())
+    email          String   @unique
+    passwordHash   String
+    name           String
+    role           UserRole @default(data_entry_staff)
+    organizationId String?
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    organization     Organization?     @relation(fields: [organizationId], references: [id])
+    activities       ActivityData[]    @relation("SubmittedBy")
+    approvals        ActivityData[]    @relation("ApprovedBy")
+    approvalRequests ApprovalRequest[] @relation("RequestedBy")
+    approvalReviews  ApprovalRequest[] @relation("ReviewedBy")
+    reports          Report[]
+    auditLogs        AuditLog[]
+
+    @@index([email])
+    @@index([organizationId])
+}
+
+model Facility {
+    id             String   @id @default(cuid())
+    organizationId String
+    name           String
+    location       String
+    address        String?
+    facilityType   String?
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    activities   ActivityData[]
+
+    @@index([organizationId])
+}
+
+model ReportingYear {
+    id             String          @id @default(cuid())
+    organizationId String
+    year           Int
+    status         ReportingStatus @default(draft)
+    submittedAt    DateTime?
+    approvedBy     String?
+    approvedAt     DateTime?
+    createdAt      DateTime        @default(now())
+    updatedAt      DateTime        @updatedAt
+
+    organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    activities   ActivityData[]
+
+    @@unique([organizationId, year])
+    @@index([organizationId])
+}
+
+model FactorSource {
+    id           String   @id @default(cuid())
+    name         String   @unique
+    abbreviation String
+    description  String?
+    url          String?
+    createdAt    DateTime @default(now())
+
+    emissionFactors EmissionFactor[]
+}
+
+model EmissionFactor {
+    id             String          @id @default(cuid())
+    category       EmissionScope
+    scope3Category Scope3Category?
+    activityType   String
+    activityUnit   String
+    factorValue    Float
+    source         String
+    country        Country
+    validFrom      DateTime
+    validTo        DateTime?
+    isCustom       Boolean         @default(false)
+    organizationId String?
+    createdAt      DateTime        @default(now())
+    updatedAt      DateTime        @updatedAt
+
+    organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    sourceRef    FactorSource? @relation(fields: [sourceId], references: [id])
+    sourceId     String?
+
+    activities ActivityData[]
+
+    @@index([category])
+    @@index([country])
+    @@index([organizationId])
+    @@index([activityType])
+}
+
+model ActivityData {
+    id                  String          @id @default(cuid())
+    organizationId      String
+    reportingYearId     String
+    facilityId          String?
+    scope               EmissionScope
+    scope3Category      Scope3Category?
+    activityType        String
+    inputValue          Float
+    inputUnit           String
+    convertedValue      Float
+    convertedUnit       String
+    emissionFactorId    String?
+    calculatedEmissions Float?
+    dataStatus          DataStatus      @default(draft)
+    submittedById       String?
+    approvedById        String?
+    comments            String?
+    source              String?
+    createdAt           DateTime        @default(now())
+    updatedAt           DateTime        @updatedAt
+
+    organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    reportingYear  ReportingYear   @relation(fields: [reportingYearId], references: [id], onDelete: Cascade)
+    facility       Facility?       @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+    submittedBy    User?           @relation("SubmittedBy", fields: [submittedById], references: [id])
+    approvedBy     User?           @relation("ApprovedBy", fields: [approvedById], references: [id])
+    emissionFactor EmissionFactor? @relation(fields: [emissionFactorId], references: [id])
+
+    scope1Vehicles       Scope1Vehicle[]
+    scope1Stationary     Scope1Stationary[]
+    scope1Refrigerants   Scope1Refrigerant[]
+    scope2Electricity    Scope2Electricity?
+    scope3PurchasedGoods Scope3PurchasedGood[]
+    scope3CapitalGoods   Scope3CapitalGood[]
+    scope3FuelEnergy     Scope3FuelEnergy[]
+    scope3Transportation Scope3Transportation[]
+    scope3Waste          Scope3Waste[]
+    scope3BusinessTravel Scope3BusinessTravel[]
+    scope3EmployeeCommuting Scope3EmployeeCommuting[]
+    scope3UpstreamLeased Scope3UpstreamLeased[]
+    scope3ProductProcessing Scope3ProductProcessing[]
+    scope3ProductUse     Scope3ProductUse[]
+    scope3EndOfLife      Scope3EndOfLife[]
+    scope3DownstreamLeased Scope3DownstreamLeased[]
+    approvalRequests     ApprovalRequest[]
+
+    @@index([organizationId])
+    @@index([reportingYearId])
+    @@index([scope])
+    @@index([dataStatus])
+}
+
+model Scope1Vehicle {
+    id             String   @id @default(cuid())
+    activityDataId String
+    vehicleType    String
+    fuelType       String
+    quantity       Float
+    unit           String
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Scope1Stationary {
+    id             String   @id @default(cuid())
+    activityDataId String
+    equipmentType  String
+    fuelType       String
+    quantity       Float
+    unit           String
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Scope1Refrigerant {
+    id              String   @id @default(cuid())
+    activityDataId  String
+    refrigerantType String
+    quantity        Float
+    unit            String   @default("kg")
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Scope2Electricity {
+    id             String   @id @default(cuid())
+    activityDataId String   @unique
+    consumption    Float
+    unit           String
+    gridRegion     String?
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Scope3PurchasedGood {
+    id              String   @id @default(cuid())
+    activityDataId  String   @unique
+    materialType    String
+    quantity        Float
+    unit            String
+    supplierId      String?
+    supplierCountry String?
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+    supplier     Supplier?    @relation(fields: [supplierId], references: [id])
+}
+
+model Scope3Transportation {
+    id               String        @id @default(cuid())
+    activityDataId   String        @unique
+    transportMode    TransportMode
+    weight           Float
+    distance         Float
+    distanceUnit     String        @default("km")
+    transportCategory String       @default("upstream")
+    createdAt        DateTime      @default(now())
+    updatedAt        DateTime      @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Scope3ProductUse {
+    id              String   @id @default(cuid())
+    activityDataId  String   @unique
+    productType     String
+    annualEnergyKwh Float
+    lifetimeYears   Int?
+    unitsSold       Float?
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Scope3EndOfLife {
+    id             String       @id @default(cuid())
+    activityDataId String       @unique
+    disposalType   DisposalType
+    wasteQuantity  Float
+    unit           String
+    createdAt      DateTime     @default(now())
+    updatedAt      DateTime     @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Scope3CapitalGood {
+    id             String   @id @default(cuid())
+    activityDataId String   @unique
+    equipmentType  String
+    quantity       Float
+    unit           String
+    purchaseYear   Int
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Scope3FuelEnergy {
+    id                String   @id @default(cuid())
+    activityDataId    String   @unique
+    fuelType          String
+    quantity          Float
+    unit              String
+    activityDescription String
+    createdAt         DateTime @default(now())
+    updatedAt         DateTime @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Scope3Waste {
+    id             String   @id @default(cuid())
+    activityDataId String   @unique
+    wasteType      String
+    disposalMethod String
+    quantity       Float
+    unit           String
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Scope3BusinessTravel {
+    id             String   @id @default(cuid())
+    activityDataId String   @unique
+    travelType     String
+    distance       Float
+    numberOfTrips  Int
+    origin         String?
+    destination    String?
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Scope3EmployeeCommuting {
+    id                   String   @id @default(cuid())
+    activityDataId       String   @unique
+    transportMode        String
+    averageDistancePerDay Float
+    daysPerYear          Int
+    numberOfEmployees    Int
+    createdAt            DateTime @default(now())
+    updatedAt            DateTime @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Scope3UpstreamLeased {
+    id             String   @id @default(cuid())
+    activityDataId String   @unique
+    assetType      String
+    leaseType      String
+    quantity       Float
+    unit           String
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Scope3ProductProcessing {
+    id             String   @id @default(cuid())
+    activityDataId String   @unique
+    productType    String
+    processingType String
+    quantity       Float
+    unit           String
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Scope3DownstreamLeased {
+    id             String   @id @default(cuid())
+    activityDataId String   @unique
+    productType    String
+    leaseType      String
+    quantity       Float
+    unit           String
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+}
+
+model Supplier {
+    id             String   @id @default(cuid())
+    organizationId String
+    name           String
+    country        String?
+    contactEmail   String?
+    industryType   String?
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    purchasedGoods Scope3PurchasedGood[]
+
+    @@index([organizationId])
+}
+
+model Product {
+    id             String   @id @default(cuid())
+    organizationId String
+    name           String
+    productType    String
+    category       String?
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+    @@index([organizationId])
+}
+
+model Report {
+    id             String     @id @default(cuid())
+    organizationId String
+    reportingYear  Int
+    reportType     ReportType
+    filePath       String?
+    status         String     @default("pending")
+    generatedAt    DateTime?
+    generatedById  String?
+    createdAt      DateTime   @default(now())
+    updatedAt      DateTime   @updatedAt
+
+    organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    generatedBy  User?        @relation(fields: [generatedById], references: [id])
+
+    @@index([organizationId])
+}
+
+model AuditLog {
+    id             String   @id @default(cuid())
+    organizationId String
+    userId         String?
+    action         String
+    entityType     String
+    entityId       String
+    oldValue       Json?
+    newValue       Json?
+    ipAddress      String?
+    userAgent      String?
+    createdAt      DateTime @default(now())
+
+    organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    user         User?        @relation(fields: [userId], references: [id])
+
+    @@index([organizationId])
+    @@index([entityType, entityId])
+    @@index([createdAt])
+}
+
+model ApprovalRequest {
+    id             String         @id @default(cuid())
+    activityDataId String
+    requestedById  String
+    status         ApprovalStatus @default(pending)
+    comments       String?
+    reviewedById   String?
+    reviewedAt     DateTime?
+    createdAt      DateTime       @default(now())
+    updatedAt      DateTime       @updatedAt
+
+    activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
+    requestedBy  User         @relation("RequestedBy", fields: [requestedById], references: [id])
+    reviewedBy   User?        @relation("ReviewedBy", fields: [reviewedById], references: [id])
+
+    @@index([activityDataId])
+    @@index([status])
+}
