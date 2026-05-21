@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,21 +29,21 @@ interface PaginationInfo {
 }
 
 interface ReportsListProps {
-    initialReports: Report[];
-    initialPagination?: PaginationInfo;
+    reports: Report[];
+    pagination: PaginationInfo;
+    canGenerateReports?: boolean;
+    canDeleteReports?: boolean;
 }
 
 export function ReportsList({
-    initialReports,
-    initialPagination,
+    reports,
+    pagination,
+    canGenerateReports = false,
+    canDeleteReports = false,
 }: ReportsListProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
-
-    const [reports, setReports] = useState(initialReports);
-    const [pagination, setPagination] = useState<PaginationInfo>(
-        initialPagination || { page: 1, limit: 10, total: 0, totalPages: 0 },
-    );
+    const [, startTransition] = useTransition();
     const [isGenerating, setIsGenerating] = useState(false);
     const [selectedYear, setSelectedYear] = useState(
         String(new Date().getFullYear()),
@@ -57,31 +57,6 @@ export function ReportsList({
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
     const years = generateYearOptions();
-
-    useEffect(() => {
-        const page = parseInt(searchParams.get("page") || "1");
-        if (page > 1 || !initialReports.length) {
-            // eslint-disable-next-line react-hooks/immutability
-            fetchReports(page);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const fetchReports = async (page: number) => {
-        try {
-            const params = new URLSearchParams();
-            params.set("page", page.toString());
-            params.set("limit", "10");
-            const res = await fetch(`/api/reports?${params.toString()}`);
-            if (res.ok) {
-                const data = await res.json();
-                setReports(data.reports);
-                setPagination(data.pagination);
-            }
-        } catch (error) {
-            console.error(error);
-        }
-    };
 
     const handlePageChange = (page: number) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -102,7 +77,6 @@ export function ReportsList({
             });
 
             if (res.ok) {
-                router.refresh();
                 const data = await res.json();
 
                 if (data.pdfBase64) {
@@ -122,10 +96,11 @@ export function ReportsList({
                     URL.revokeObjectURL(url);
                 }
 
-                setReports((prev) => [data, ...prev]);
+                startTransition(() => {
+                    router.refresh();
+                });
             }
         } catch (error) {
-            console.error(error);
         } finally {
             setIsGenerating(false);
         }
@@ -140,7 +115,6 @@ export function ReportsList({
                 setViewingReport({ id: reportId, data, loading: false });
             }
         } catch (error) {
-            console.error(error);
             setViewingReport(null);
         }
     };
@@ -168,27 +142,24 @@ export function ReportsList({
                 }
             }
         } catch (error) {
-            console.error(error);
         }
     };
 
     const handleDeleteReport = async () => {
         if (!deleteConfirmId) return;
 
-        setDeletingId(deleteConfirmId);
+        const reportId = deleteConfirmId;
+        setDeletingId(reportId);
         setDeleteConfirmId(null);
         try {
-            const res = await fetch(`/api/reports/${deleteConfirmId}/delete`, {
+            const res = await fetch(`/api/reports/${reportId}/delete`, {
                 method: "DELETE",
             });
             if (res.ok) {
-                setReports((prev) =>
-                    prev.filter((r) => r.id !== deleteConfirmId),
-                );
-                router.refresh();
+                startTransition(() => {
+                    router.refresh();
+                });
             }
-        } catch (error) {
-            console.error(error);
         } finally {
             setDeletingId(null);
         }
@@ -200,6 +171,7 @@ export function ReportsList({
                 <h1 className="text-3xl font-bold">Reports</h1>
             </div>
 
+            {canGenerateReports && (
             <Card>
                 <CardHeader>
                     <CardTitle>Generate New Report</CardTitle>
@@ -239,6 +211,7 @@ export function ReportsList({
                     </div>
                 </CardContent>
             </Card>
+            )}
 
             <Card>
                 <CardHeader>
@@ -321,6 +294,7 @@ export function ReportsList({
                                                     >
                                                         <Download className="w-4 h-4" />
                                                     </Button>
+                                                    {canDeleteReports && (
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
@@ -342,6 +316,7 @@ export function ReportsList({
                                                             <Trash2 className="w-4 h-4" />
                                                         )}
                                                     </Button>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -412,7 +387,7 @@ export function ReportsList({
                         reports={reports}
                         onView={handleViewReport}
                         onDownload={handleDownloadReport}
-                        onDeleteClick={(id) => setDeleteConfirmId(id)}
+                        onDeleteClick={canDeleteReports ? (id) => setDeleteConfirmId(id) : undefined}
                         deletingId={deletingId}
                     />
                 </CardContent>

@@ -90,7 +90,6 @@ export async function POST(request: NextRequest) {
             { status: 201 }
         )
     } catch (error) {
-        console.error('Organization creation error:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }
@@ -118,7 +117,6 @@ export async function GET() {
 
         return NextResponse.json(organizations)
     } catch (error) {
-        console.error('Organizations GET error:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }

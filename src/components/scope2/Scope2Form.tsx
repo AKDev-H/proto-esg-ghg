@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,21 +13,19 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { electricitySchema } from "@/modules/scope2/schemas";
+import { EmissionFactorSelect } from "@/modules/emission-factors/components/emission-factor-select";
+import { useCreateActivityForm } from "@/modules/activities/hooks/use-create-activity-form";
+import type { EmissionFactorOption } from "@/modules/activities/types";
 import type { ElectricityFormData } from "@/modules/scope2/types";
 
 interface Scope2FormProps {
-    factors: Array<{
-        id: string;
-        activityType: string;
-        factorValue: number;
-        activityUnit: string;
-    }>;
+    factors: EmissionFactorOption[];
     onSuccess?: () => void;
 }
 
 export function Scope2Form({ factors, onSuccess }: Scope2FormProps) {
-    const router = useRouter();
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { isSubmitting, submit } = useCreateActivityForm({ onSuccess });
+
     const form = useForm<ElectricityFormData>({
         resolver: zodResolver(electricitySchema),
         defaultValues: {
@@ -40,42 +36,25 @@ export function Scope2Form({ factors, onSuccess }: Scope2FormProps) {
     });
 
     const onSubmit = async (data: ElectricityFormData) => {
-        setIsSubmitting(true);
-        try {
-            const response = await fetch("/api/activities", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    scope: "scope2",
-                    activityType: "electricity",
-                    inputValue: data.consumption,
-                    inputUnit: data.unit,
-                    emissionFactorId: data.emissionFactorId,
-                }),
-            });
-
-            if (response.ok) {
-                const activity = await response.json();
-                await fetch(`/api/activities/${activity.id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        scope2Electricity: {
-                            create: {
-                                gridRegion: data.gridRegion,
-                            },
-                        },
-                    }),
-                });
-                router.refresh();
-                form.reset();
-                onSuccess?.();
-            }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setIsSubmitting(false);
-        }
+        const ok = await submit(
+            {
+                scope: "scope2",
+                activityType: "electricity",
+                inputValue: data.consumption,
+                inputUnit: data.unit,
+                emissionFactorId: data.emissionFactorId,
+            },
+            {
+                scope2Electricity: {
+                    create: {
+                        consumption: data.consumption,
+                        unit: data.unit,
+                        gridRegion: data.gridRegion,
+                    },
+                },
+            },
+        );
+        if (ok) form.reset();
     };
 
     return (
@@ -89,9 +68,7 @@ export function Scope2Form({ factors, onSuccess }: Scope2FormProps) {
                         type="number"
                         step="0.01"
                         error={!!form.formState.errors.consumption}
-                        {...form.register("consumption", {
-                            valueAsNumber: true,
-                        })}
+                        {...form.register("consumption", { valueAsNumber: true })}
                         placeholder="Enter consumption"
                     />
                     <Select
@@ -120,30 +97,14 @@ export function Scope2Form({ factors, onSuccess }: Scope2FormProps) {
                 />
             </div>
 
-            <div className="space-y-2">
-                <Label>Emission Factor</Label>
-                <Select
-                    value={form.watch("emissionFactorId") || ""}
-                    onValueChange={(v) => form.setValue("emissionFactorId", v)}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select emission factor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {factors.map((f) => (
-                            <SelectItem key={f.id} value={f.id}>
-                                {f.activityType} - {f.factorValue} kgCO2e/
-                                {f.activityUnit}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
+            <EmissionFactorSelect
+                factors={factors}
+                value={form.watch("emissionFactorId") || ""}
+                onChange={(v) => form.setValue("emissionFactorId", v)}
+            />
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {form.formState.isSubmitting
-                    ? "Saving..."
-                    : "Add Electricity Activity"}
+                {isSubmitting ? "Saving..." : "Add Electricity Activity"}
             </Button>
         </form>
     );

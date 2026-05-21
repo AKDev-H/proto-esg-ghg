@@ -1,45 +1,48 @@
 "use client";
 
-import { SCOPE3_CATEGORY_IMPORTANCE, type Scope3Category } from "@/types";
+import { SCOPE3_CATEGORY_SHORT_LABELS, SCOPE3_CATEGORY_IMPORTANCE, type Scope3Category } from "@/types";
 
-const CATEGORY_LABELS: Record<Scope3Category, string> = {
-    cat1_purchased_goods: "Purchased Goods",
-    cat2_capital_goods: "Capital Goods",
-    cat3_fuel_energy: "Fuel & Energy",
-    cat4_upstream_transport: "Upstream Transport",
-    cat5_waste: "Waste",
-    cat6_business_travel: "Business Travel",
-    cat7_employee_commuting: "Employee Commuting",
-    cat8_upstream_leased: "Upstream Leased",
-    cat9_downstream_transport: "Downstream Transport",
-    cat10_product_processing: "Product Processing",
-    cat11_product_use: "Product Use",
-    cat12_end_of_life: "End of Life",
-    cat13_downstream_leased: "Downstream Leased",
+const TAB_KEYS = [
+    "purchased",
+    "capital",
+    "fuel",
+    "upstream",
+    "waste",
+    "travel",
+    "commute",
+    "upstreamLeased",
+    "downstream",
+    "processing",
+    "productUse",
+    "endOfLife",
+    "downstreamLeased",
+] as const;
+
+export type Scope3TabKey = (typeof TAB_KEYS)[number];
+
+export const SCOPE3_TAB_CATEGORIES: Record<Scope3TabKey, Scope3Category> = {
+    purchased: "cat1_purchased_goods",
+    capital: "cat2_capital_goods",
+    fuel: "cat3_fuel_energy",
+    upstream: "cat4_upstream_transport",
+    waste: "cat5_waste",
+    travel: "cat6_business_travel",
+    commute: "cat7_employee_commuting",
+    upstreamLeased: "cat8_upstream_leased",
+    downstream: "cat9_downstream_transport",
+    processing: "cat10_product_processing",
+    productUse: "cat11_product_use",
+    endOfLife: "cat12_end_of_life",
+    downstreamLeased: "cat13_downstream_leased",
 };
 
 interface Scope3TabsProps {
-    activeTab: string;
-    onTabChange: (tab: string) => void;
+    activeTab: Scope3TabKey;
+    onTabChange: (tab: Scope3TabKey) => void;
 }
 
 export function Scope3Tabs({ activeTab, onTabChange }: Scope3TabsProps) {
-    const categories = Object.keys(CATEGORY_LABELS) as Scope3Category[];
-    const tabKeys = [
-        "purchased",
-        "capital",
-        "fuel",
-        "upstream",
-        "waste",
-        "travel",
-        "commute",
-        "leased",
-        "downstream",
-        "processing",
-        "product",
-        "endoflife",
-        "downstreamLeased",
-    ];
+    const categories = Object.values(SCOPE3_TAB_CATEGORIES);
 
     const importanceColors = {
         high: "text-orange-600",
@@ -54,8 +57,8 @@ export function Scope3Tabs({ activeTab, onTabChange }: Scope3TabsProps) {
                 <button
                     key={cat}
                     type="button"
-                    onClick={() => onTabChange(tabKeys[idx])}
-                    className={`px-3 py-2 text-xs font-medium border-b-2 whitespace-nowrap transition-colors ${activeTab === tabKeys[idx] ? "border-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                    onClick={() => onTabChange(TAB_KEYS[idx])}
+                    className={`px-3 py-2 text-xs font-medium border-b-2 whitespace-nowrap transition-colors ${activeTab === TAB_KEYS[idx] ? "border-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
                 >
                     <span
                         className={
@@ -64,11 +67,11 @@ export function Scope3Tabs({ activeTab, onTabChange }: Scope3TabsProps) {
                     >
                         ●
                     </span>{" "}
-                    {CATEGORY_LABELS[cat]}
+                    {SCOPE3_CATEGORY_SHORT_LABELS[cat]}
                 </button>
             ))}
         </div>
     );
 }
 
-export { CATEGORY_LABELS };
+export { SCOPE3_CATEGORY_SHORT_LABELS as CATEGORY_LABELS };

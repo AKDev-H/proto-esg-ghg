@@ -1,25 +1,24 @@
 "use client";
 
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { productProcessingSchema } from "@/modules/scope3/schemas";
+import { Scope3ActivityFormShell } from "@/modules/scope3/components/scope3-activity-form-shell";
+import { useCreateActivityForm } from "@/modules/activities/hooks/use-create-activity-form";
+import type { EmissionFactorOption } from "@/modules/activities/types";
 import type { ProductProcessingFormData, ProcessingType } from "@/modules/scope3/types";
 
 interface ProductProcessingFormProps {
-    factors: Array<{ id: string; activityType: string; factorValue: number; activityUnit: string }>;
+    factors: EmissionFactorOption[];
     onSuccess?: () => void;
 }
 
 export function ProductProcessingForm({ factors, onSuccess }: ProductProcessingFormProps) {
-    const router = useRouter();
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [selectedFactor, setSelectedFactor] = useState<string>("");
+    const { isSubmitting, selectedFactorId, setSelectedFactorId, submit, resetFactor } =
+        useCreateActivityForm({ onSuccess });
 
     const form = useForm<ProductProcessingFormData>({
         resolver: zodResolver(productProcessingSchema),
@@ -27,51 +26,43 @@ export function ProductProcessingForm({ factors, onSuccess }: ProductProcessingF
     });
 
     const onSubmit = async (data: ProductProcessingFormData) => {
-        setIsSubmitting(true);
-        try {
-            const res = await fetch("/api/activities", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    scope: "scope3",
-                    scope3Category: "cat10_product_processing",
-                    activityType: "product_processing",
-                    inputValue: data.quantity,
-                    inputUnit: data.unit,
-                    emissionFactorId: selectedFactor || undefined,
-                }),
-            });
-
-            if (res.ok) {
-                const activity = await res.json();
-                await fetch(`/api/activities/${activity.id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        scope3ProductProcessing: {
-                            create: {
-                                productType: data.productType,
-                                processingType: data.processingType,
-                                quantity: data.quantity,
-                                unit: data.unit,
-                            },
-                        },
-                    }),
-                });
-                router.refresh();
-                form.reset();
-                setSelectedFactor("");
-                onSuccess?.();
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsSubmitting(false);
+        const ok = await submit(
+            {
+                scope: "scope3",
+                scope3Category: "cat10_product_processing",
+                activityType: "product_processing",
+                inputValue: data.quantity,
+                inputUnit: data.unit,
+            },
+            {
+                scope3ProductProcessing: {
+                    create: {
+                        productType: data.productType,
+                        processingType: data.processingType,
+                        quantity: data.quantity,
+                        unit: data.unit,
+                    },
+                },
+            },
+        );
+        if (ok) {
+            form.reset();
+            resetFactor();
         }
     };
 
     return (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <Scope3ActivityFormShell
+            factors={factors}
+            isSubmitting={isSubmitting}
+            selectedFactorId={selectedFactorId}
+            onFactorChange={setSelectedFactorId}
+            onSubmit={form.handleSubmit(onSubmit)}
+            preview={{
+                value: form.watch("quantity") || 0,
+                unit: form.watch("unit") || "units",
+            }}
+        >
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label>Product Type</Label>
@@ -100,22 +91,6 @@ export function ProductProcessingForm({ factors, onSuccess }: ProductProcessingF
                     <Input {...form.register("unit")} placeholder="e.g., units" />
                 </div>
             </div>
-            <div className="space-y-2">
-                <Label>Emission Factor</Label>
-                <Select value={selectedFactor} onValueChange={setSelectedFactor}>
-                    <SelectTrigger><SelectValue placeholder="Select emission factor" /></SelectTrigger>
-                    <SelectContent>
-                        {factors.map((f) => (
-                            <SelectItem key={f.id} value={f.id}>
-                                {f.activityType} - {f.factorValue} kgCO2e/{f.activityUnit}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Add"}
-            </Button>
-        </form>
+        </Scope3ActivityFormShell>
     );
 }

@@ -34,7 +34,6 @@ export async function GET(
 
         return NextResponse.json(organization);
     } catch (error) {
-        console.error("Superadmin organization GET error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
@@ -66,7 +65,6 @@ export async function PUT(
 
         return NextResponse.json(organization);
     } catch (error) {
-        console.error("Superadmin organization UPDATE error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
@@ -89,7 +87,6 @@ export async function DELETE(
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("Superadmin organization DELETE error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

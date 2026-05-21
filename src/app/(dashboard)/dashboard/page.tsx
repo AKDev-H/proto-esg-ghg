@@ -33,7 +33,7 @@ export default async function DashboardPage() {
 
     if (isSuperAdmin) {
         return (
-            <div className="space-y-6">
+            <div className="space-y-8">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <h1 className="text-2xl sm:text-3xl font-bold">Super Admin Dashboard</h1>
                     <Button asChild className="w-full sm:w-auto">
@@ -119,10 +119,15 @@ export default async function DashboardPage() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
-                <Button asChild className="w-full sm:w-auto">
+        <div className="space-y-8">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Emissions overview and quick actions
+                    </p>
+                </div>
+                <Button asChild className="w-full sm:w-auto shrink-0">
                     <Link href="/activities/scope1">
                         <Plus className="w-4 h-4 mr-2" />
                         Add Activity
@@ -132,7 +137,9 @@ export default async function DashboardPage() {
 
             <DashboardOverview />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            <section className="space-y-4">
+                <h2 className="text-lg font-semibold">Quick Actions</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 <Card className="overflow-hidden">
                     <CardHeader className="bg-primary/5 pb-3">
                         <CardTitle className="text-base md:text-lg flex items-center gap-2">
@@ -214,7 +221,8 @@ export default async function DashboardPage() {
                         </Link>
                     </CardContent>
                 </Card>
-            </div>
+                </div>
+            </section>
         </div>
     )
 }

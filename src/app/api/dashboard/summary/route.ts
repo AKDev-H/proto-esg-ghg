@@ -77,7 +77,6 @@ export async function GET(request: NextRequest) {
             activityCount: activities.length,
         });
     } catch (error) {
-        console.error("Dashboard summary error:", error);
         return NextResponse.json(
             { error: "Internal server error" },
             { status: 500 },

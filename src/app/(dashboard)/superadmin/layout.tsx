@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Loader2, Shield, Building2, Users, LayoutDashboard, LogOut, Settings, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -62,7 +63,7 @@ export default function SuperAdminLayout({
     return (
         <div className="min-h-screen bg-background">
             <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <div className="container flex h-16 items-center justify-between px-4">
+                <PageContainer className="flex h-16 items-center justify-between">
                     <div className="flex items-center gap-4 md:gap-8">
                         <Link href="/superadmin/organizations" className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
@@ -165,10 +166,12 @@ export default function SuperAdminLayout({
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
-                </div>
+                </PageContainer>
             </header>
 
-            <main className="container px-4 py-6">{children}</main>
+            <PageContainer as="main" className="py-8 md:py-10">
+                {children}
+            </PageContainer>
         </div>
     );
 }

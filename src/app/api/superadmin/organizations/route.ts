@@ -37,7 +37,6 @@ export async function GET() {
 
         return NextResponse.json(organizations);
     } catch (error) {
-        console.error("Superadmin organizations GET error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
@@ -122,7 +121,6 @@ export async function POST(request: NextRequest) {
             { status: 201 }
         );
     } catch (error) {
-        console.error("Superadmin organization creation error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

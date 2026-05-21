@@ -91,7 +91,6 @@ export default function SuperAdminOrganizationsPage() {
                 setOrganizations(await res.json());
             }
         } catch (error) {
-            console.error("Failed to fetch organizations:", error);
         } finally {
             setLoading(false);
         }
@@ -115,7 +114,6 @@ export default function SuperAdminOrganizationsPage() {
                 fetchOrganizations();
             }
         } catch (error) {
-            console.error("Failed to create organization:", error);
         }
     };
 
@@ -132,7 +130,6 @@ export default function SuperAdminOrganizationsPage() {
                 fetchOrganizations();
             }
         } catch (error) {
-            console.error("Failed to delete organization:", error);
         }
     };
 

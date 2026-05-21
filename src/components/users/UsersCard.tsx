@@ -20,7 +20,6 @@ export function UsersCard({ users, currentUserId, onDelete }: UsersCardProps) {
             const res = await fetch(`/api/users/${id}`, { method: "DELETE" })
             if (res.ok) onDelete?.(id)
         } catch (error) {
-            console.error(error)
         }
     }
 

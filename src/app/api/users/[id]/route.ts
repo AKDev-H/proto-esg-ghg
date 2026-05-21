@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
-import { ADMIN_ROLES } from '@/modules/auth/types'
+import { canManageUsers } from '@/lib/permissions'
 
 export async function GET(
   request: NextRequest,
@@ -47,7 +47,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!ADMIN_ROLES.includes(session.user.role)) {
+    if (!canManageUsers(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -84,7 +84,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!ADMIN_ROLES.includes(session.user.role)) {
+    if (!canManageUsers(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

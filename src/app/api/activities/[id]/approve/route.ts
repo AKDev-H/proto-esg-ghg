@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
-import { ADMIN_ROLES } from '@/modules/auth/types'
+import { canApproveActivities } from '@/lib/permissions'
 
 export async function POST(
   request: NextRequest,
@@ -13,7 +13,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!ADMIN_ROLES.includes(session.user.role)) {
+    if (!canApproveActivities(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

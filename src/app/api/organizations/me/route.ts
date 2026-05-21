@@ -52,7 +52,6 @@ export async function GET() {
             })),
         });
     } catch (error) {
-        console.error("Organization me error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

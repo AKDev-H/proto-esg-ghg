@@ -1,20 +1,18 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { UsersCard } from "./UsersCard"
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal"
 import type { User } from "@/modules/users/types"
 
 interface UsersTableProps {
-    initialUsers: User[]
+    users: User[]
     currentUserId?: string
+    onUserDeleted?: (id: string) => void
 }
 
-export function UsersTable({ initialUsers, currentUserId }: UsersTableProps) {
-    const router = useRouter()
-    const [users, setUsers] = useState(initialUsers)
+export function UsersTable({ users, currentUserId, onUserDeleted }: UsersTableProps) {
     const [deleteId, setDeleteId] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
 
@@ -23,15 +21,13 @@ export function UsersTable({ initialUsers, currentUserId }: UsersTableProps) {
         setIsDeleting(true)
         const res = await fetch(`/api/users/${deleteId}`, { method: "DELETE" })
         if (res.ok) {
-            setUsers((prev) => prev.filter((u) => u.id !== deleteId))
-            router.refresh()
+            onUserDeleted?.(deleteId)
         }
         setIsDeleting(false)
         setDeleteId(null)
     }
 
     const userToDelete = users.find(u => u.id === deleteId)
-    const canDelete = deleteId && deleteId !== currentUserId
 
     return (
         <div>

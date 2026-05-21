@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { calculateEmissions } from "@/modules/calculations/services/calculations";
+import {
+    canCreateActivities,
+    canManageUsers,
+} from "@/lib/permissions";
 
 export async function GET(
     request: NextRequest,
@@ -47,7 +51,6 @@ export async function GET(
 
         return NextResponse.json(activity);
     } catch (error) {
-        console.error("Activity GET error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
@@ -62,7 +65,7 @@ export async function PUT(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        if (!["super_admin", "org_admin", "sustainability_manager", "data_entry_staff"].includes(session.user.role)) {
+        if (!canCreateActivities(session.user.role)) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
@@ -85,12 +88,20 @@ export async function PUT(
         let calculatedEmissions: number | null = existing.calculatedEmissions;
 
         const factorId = body.emissionFactorId ?? existing.emissionFactorId;
-        const needsRecalculation = body.inputValue !== undefined || body.emissionFactorId;
-        
+        const needsRecalculation =
+            body.inputValue !== undefined ||
+            body.emissionFactorId !== undefined ||
+            calculatedEmissions == null;
+
         if (factorId && needsRecalculation) {
             const factor = await prisma.emissionFactor.findUnique({ where: { id: factorId } });
             if (factor) {
-                const result = calculateEmissions(inputValue, inputUnit, factor.factorValue, existing.scope);
+                const result = calculateEmissions(
+                    Number(inputValue),
+                    String(inputUnit),
+                    Number(factor.factorValue),
+                    String(factor.activityUnit),
+                );
                 convertedValue = result.convertedValue;
                 convertedUnit = result.convertedUnit;
                 calculatedEmissions = result.calculatedEmissions;
@@ -193,7 +204,6 @@ export async function PUT(
 
         return NextResponse.json(updated);
     } catch (error) {
-        console.error("Activity PUT error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
@@ -208,7 +218,7 @@ export async function DELETE(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        if (!["super_admin", "org_admin"].includes(session.user.role)) {
+        if (!canManageUsers(session.user.role)) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
@@ -234,7 +244,6 @@ export async function DELETE(
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("Activity DELETE error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

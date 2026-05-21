@@ -57,6 +57,22 @@ export const SCOPE3_CATEGORY_LABELS: Record<Scope3Category, string> = {
     cat13_downstream_leased: "13. Downstream Leased Assets",
 };
 
+export const SCOPE3_CATEGORY_SHORT_LABELS: Record<Scope3Category, string> = {
+    cat1_purchased_goods: "Purchased Goods",
+    cat2_capital_goods: "Capital Goods",
+    cat3_fuel_energy: "Fuel & Energy",
+    cat4_upstream_transport: "Upstream Transport",
+    cat5_waste: "Waste",
+    cat6_business_travel: "Business Travel",
+    cat7_employee_commuting: "Employee Commuting",
+    cat8_upstream_leased: "Upstream Leased",
+    cat9_downstream_transport: "Downstream Transport",
+    cat10_product_processing: "Product Processing",
+    cat11_product_use: "Product Use",
+    cat12_end_of_life: "End of Life",
+    cat13_downstream_leased: "Downstream Leased",
+};
+
 export const SCOPE3_CATEGORY_IMPORTANCE: Record<Scope3Category, "high" | "medium" | "low" | "na"> = {
     cat1_purchased_goods: "high",
     cat2_capital_goods: "medium",

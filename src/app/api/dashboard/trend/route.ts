@@ -40,30 +40,40 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    const trendData = reportingYears.map((ry) => {
-      const totalEmissions = ry.activities.reduce((sum, a) => sum + (a.calculatedEmissions ?? 0), 0)
-      const byScope = {
-        scope1: 0,
-        scope2: 0,
-        scope3: 0,
-      }
-      for (const activity of ry.activities) {
-        byScope[activity.scope as keyof typeof byScope] += activity.calculatedEmissions ?? 0
-      }
+    const trendData = years
+      .sort((a, b) => a - b)
+      .map((year) => {
+        const reportingYear = reportingYears.find((item) => item.year === year)
+        const activities = reportingYear?.activities ?? []
 
-      return {
-        year: ry.year,
-        total: Math.round(totalEmissions),
-        totalTonCO2e: Math.round(totalEmissions / 1000 * 100) / 100,
-        scope1: Math.round(byScope.scope1),
-        scope2: Math.round(byScope.scope2),
-        scope3: Math.round(byScope.scope3),
-      }
-    })
+        const totalEmissions = activities.reduce(
+          (sum, activity) => sum + (activity.calculatedEmissions ?? 0),
+          0,
+        )
+
+        const byScope = {
+          scope1: 0,
+          scope2: 0,
+          scope3: 0,
+        }
+
+        for (const activity of activities) {
+          byScope[activity.scope as keyof typeof byScope] +=
+            activity.calculatedEmissions ?? 0
+        }
+
+        return {
+          year,
+          total: Math.round(totalEmissions),
+          totalTonCO2e: Math.round((totalEmissions / 1000) * 100) / 100,
+          scope1: Math.round(byScope.scope1),
+          scope2: Math.round(byScope.scope2),
+          scope3: Math.round(byScope.scope3),
+        }
+      })
 
     return NextResponse.json(trendData)
   } catch (error) {
-    console.error('Dashboard trend error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

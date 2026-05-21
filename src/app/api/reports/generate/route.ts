@@ -2,24 +2,38 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { generateESGSummaryPDF } from "@/modules/reports/components/ESGSummaryReport";
-import { SCOPE3_CATEGORY_LABELS } from "@/lib/constants";
+import { buildReportSummaryFromActivities } from "@/modules/reports/services/build-report-summary";
+import { canGenerateReports } from "@/lib/permissions";
 
 export async function POST(request: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json(
+                { error: "Unauthorized" },
+                { status: 401 },
+            );
+        }
+
+        if (!canGenerateReports(session.user.role)) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
         if (!session.user.organizationId) {
-            return NextResponse.json({ error: "No organization associated" }, { status: 400 });
+            return NextResponse.json(
+                { error: "No organization associated" },
+                { status: 400 },
+            );
         }
 
         const body = await request.json();
         const { reportingYear, reportType } = body;
 
         if (!reportingYear) {
-            return NextResponse.json({ error: "Reporting year is required" }, { status: 400 });
+            return NextResponse.json(
+                { error: "Reporting year is required" },
+                { status: 400 },
+            );
         }
 
         const organization = await prisma.organization.findUnique({
@@ -27,7 +41,10 @@ export async function POST(request: NextRequest) {
         });
 
         if (!organization) {
-            return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+            return NextResponse.json(
+                { error: "Organization not found" },
+                { status: 404 },
+            );
         }
 
         const reportingYearRecord = await prisma.reportingYear.findFirst({
@@ -40,54 +57,20 @@ export async function POST(request: NextRequest) {
         const activities = await prisma.activityData.findMany({
             where: {
                 organizationId: session.user.organizationId,
-                ...(reportingYearRecord ? { reportingYearId: reportingYearRecord.id } : {}),
+                ...(reportingYearRecord
+                    ? { reportingYearId: reportingYearRecord.id }
+                    : {}),
             },
             include: {
                 emissionFactor: true,
             },
         });
 
-        const totalEmissions = activities.reduce(
-            (sum, a) => sum + (a.calculatedEmissions ?? 0),
-            0,
+        const summary = buildReportSummaryFromActivities(
+            activities,
+            organization.country,
+            organization.industryType,
         );
-
-        const byScope = {
-            scope1: 0,
-            scope2: 0,
-            scope3: 0,
-        };
-        const byCategory: Record<string, number> = {};
-        const byActivityType: Record<string, number> = {};
-
-        for (const activity of activities) {
-            byScope[activity.scope as keyof typeof byScope] += activity.calculatedEmissions ?? 0;
-            
-            const activityKey = `${activity.scope}:${activity.activityType}`;
-            byActivityType[activityKey] = (byActivityType[activityKey] || 0) + (activity.calculatedEmissions ?? 0);
-            
-            if (activity.scope === "scope3" && activity.scope3Category) {
-                byCategory[activity.scope3Category] =
-                    (byCategory[activity.scope3Category] || 0) + (activity.calculatedEmissions ?? 0);
-            }
-        }
-
-        const scope3Categories = Object.entries(byCategory)
-            .map(([category, emissions]) => ({
-                category: SCOPE3_CATEGORY_LABELS[category] || category,
-                emissions,
-                percentage: totalEmissions > 0 ? (emissions / totalEmissions) * 100 : 0,
-                activityCount: activities.filter(a => a.scope === "scope3" && a.scope3Category === category).length,
-            }))
-            .sort((a, b) => b.emissions - a.emissions);
-
-        const topActivities = Object.entries(byActivityType)
-            .map(([key, emissions]) => {
-                const [scope, activityType] = key.split(":");
-                return { activityType, emissions, scope };
-            })
-            .sort((a, b) => b.emissions - a.emissions)
-            .slice(0, 5);
 
         const reportData = {
             organization: {
@@ -97,22 +80,20 @@ export async function POST(request: NextRequest) {
             },
             reportingYear,
             generatedAt: new Date().toISOString(),
-            totalEmissions,
-            scope1Emissions: byScope.scope1,
-            scope2Emissions: byScope.scope2,
-            scope3Emissions: byScope.scope3,
-            activityCount: activities.length,
-            scope1Percentage: totalEmissions > 0 ? (byScope.scope1 / totalEmissions) * 100 : 0,
-            scope2Percentage: totalEmissions > 0 ? (byScope.scope2 / totalEmissions) * 100 : 0,
-            scope3Percentage: totalEmissions > 0 ? (byScope.scope3 / totalEmissions) * 100 : 0,
-            scope3Categories,
-            topActivities,
+            ...summary,
             countryContext: {
-                benchmark: organization.country === "US" ? "EPA Manufacturing Benchmark" : "Malaysia Grid Average",
-                unit: organization.country === "US" ? "lb CO2e/unit" : "kg CO2e/kWh",
-                threshold: organization.country === "US"
-                    ? { low: 25, medium: 50, high: 50 }
-                    : { low: 20, medium: 40, high: 40 },
+                benchmark:
+                    organization.country === "US"
+                        ? "EPA Manufacturing Benchmark"
+                        : "Malaysia Grid Average",
+                unit:
+                    organization.country === "US"
+                        ? "lb CO2e/unit"
+                        : "kg CO2e/kWh",
+                threshold:
+                    organization.country === "US"
+                        ? { low: 25, medium: 50, high: 50 }
+                        : { low: 20, medium: 40, high: 40 },
             },
         };
 
@@ -143,28 +124,41 @@ export async function POST(request: NextRequest) {
                     newValue: {
                         reportingYear,
                         reportType: "esg_summary",
-                        totalEmissions,
-                        activityCount: activities.length,
+                        totalEmissions: summary.totalEmissions,
+                        activityCount: summary.activityCount,
                     },
                 },
             });
 
-            return NextResponse.json({
-                id: report.id,
-                organizationId: report.organizationId,
-                reportingYear: report.reportingYear,
-                reportType: report.reportType,
-                status: report.status,
-                generatedAt: report.generatedAt?.toISOString(),
-                createdAt: report.createdAt.toISOString(),
-                pdfBase64,
-                summary: {
-                    totalEmissions,
-                    byScope,
-                    byCategory,
-                    activityCount: activities.length,
+            return NextResponse.json(
+                {
+                    id: report.id,
+                    organizationId: report.organizationId,
+                    reportingYear: report.reportingYear,
+                    reportType: report.reportType,
+                    status: report.status,
+                    generatedAt: report.generatedAt?.toISOString(),
+                    createdAt: report.createdAt.toISOString(),
+                    pdfBase64,
+                    summary: {
+                        totalEmissions: summary.totalEmissions,
+                        byScope: {
+                            scope1: summary.scope1Emissions,
+                            scope2: summary.scope2Emissions,
+                            scope3: summary.scope3Emissions,
+                        },
+                        byCategory: Object.fromEntries(
+                            summary.scope3Categories.map((c) => [
+                                c.categoryKey,
+                                c.emissions,
+                            ]),
+                        ),
+                        activityCount: summary.activityCount,
+                        actionPlan: summary.actionPlan,
+                    },
                 },
-            }, { status: 201 });
+                { status: 201 },
+            );
         }
 
         const report = await prisma.report.create({
@@ -189,32 +183,44 @@ export async function POST(request: NextRequest) {
                 newValue: {
                     reportingYear,
                     reportType,
-                    totalEmissions,
-                    activityCount: activities.length,
+                    totalEmissions: summary.totalEmissions,
+                    activityCount: summary.activityCount,
                 },
             },
         });
 
-        return NextResponse.json({
-            id: report.id,
-            organizationId: report.organizationId,
-            reportingYear: report.reportingYear,
-            reportType: report.reportType,
-            status: report.status,
-            generatedAt: report.generatedAt?.toISOString(),
-            createdAt: report.createdAt.toISOString(),
-            summary: {
-                totalEmissions,
-                byScope,
-                byCategory,
-                activityCount: activities.length,
+        return NextResponse.json(
+            {
+                id: report.id,
+                organizationId: report.organizationId,
+                reportingYear: report.reportingYear,
+                reportType: report.reportType,
+                status: report.status,
+                generatedAt: report.generatedAt?.toISOString(),
+                createdAt: report.createdAt.toISOString(),
+                summary: {
+                    totalEmissions: summary.totalEmissions,
+                    byScope: {
+                        scope1: summary.scope1Emissions,
+                        scope2: summary.scope2Emissions,
+                        scope3: summary.scope3Emissions,
+                    },
+                    byCategory: Object.fromEntries(
+                        summary.scope3Categories.map((c) => [
+                            c.categoryKey,
+                            c.emissions,
+                        ]),
+                    ),
+                    activityCount: summary.activityCount,
+                    actionPlan: summary.actionPlan,
+                },
             },
-        }, { status: 201 });
+            { status: 201 },
+        );
     } catch (error) {
-        console.error("Report generate error:", error);
-        if (error instanceof Error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
-        }
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 },
+        );
     }
 }

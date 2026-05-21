@@ -57,10 +57,11 @@ export function ReportsCard({ reports, onView, onDownload, onDeleteClick, deleti
                                 <Download className="w-4 h-4 mr-1" />
                                 Download
                             </Button>
+                            {onDeleteClick && (
                             <Button 
                                 size="sm" 
                                 variant="outline" 
-                                onClick={() => onDeleteClick?.(report.id)}
+                                onClick={() => onDeleteClick(report.id)}
                                 disabled={deletingId === report.id}
                                 className="text-red-500 hover:text-red-600 hover:bg-red-50"
                             >
@@ -70,6 +71,7 @@ export function ReportsCard({ reports, onView, onDownload, onDeleteClick, deleti
                                     <Trash2 className="w-4 h-4" />
                                 )}
                             </Button>
+                            )}
                         </div>
                     </CardContent>
                 </Card>

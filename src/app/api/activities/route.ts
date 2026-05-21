@@ -2,14 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { activityFilterSchema } from "@/modules/activities/schemas";
-import { CONVERSION_FACTORS, STANDARD_UNITS } from "@/lib/constants";
 import { calculateEmissions } from "@/modules/calculations/services/calculations";
+import { mapActivityRecord } from "@/modules/activities/services/map-activity-record";
+import { canCreateActivities } from "@/lib/permissions";
 
 export async function GET(request: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json(
+                { error: "Unauthorized" },
+                { status: 401 },
+            );
         }
 
         const { searchParams } = new URL(request.url);
@@ -29,13 +33,17 @@ export async function GET(request: NextRequest) {
             const reportingYear = await prisma.reportingYear.findFirst({
                 where: {
                     year: parseInt(params.year),
-                    organizationId: params.organizationId || session.user.organizationId!,
+                    organizationId:
+                        params.organizationId || session.user.organizationId!,
                 },
             });
             if (reportingYear) where.reportingYearId = reportingYear.id;
         }
         if (params.organizationId) where.organizationId = params.organizationId;
-        else if (session.user.role !== "super_admin" && session.user.organizationId)
+        else if (
+            session.user.role !== "super_admin" &&
+            session.user.organizationId
+        )
             where.organizationId = session.user.organizationId;
 
         const [activities, total] = await Promise.all([
@@ -44,8 +52,12 @@ export async function GET(request: NextRequest) {
                 include: {
                     facility: true,
                     emissionFactor: true,
-                    submittedBy: { select: { id: true, name: true, email: true } },
-                    approvedBy: { select: { id: true, name: true, email: true } },
+                    submittedBy: {
+                        select: { id: true, name: true, email: true },
+                    },
+                    approvedBy: {
+                        select: { id: true, name: true, email: true },
+                    },
                     scope1Vehicles: true,
                     scope1Stationary: true,
                     scope1Refrigerants: true,
@@ -63,7 +75,9 @@ export async function GET(request: NextRequest) {
         ]);
 
         return NextResponse.json({
-            activities,
+            activities: activities.map((activity) =>
+                mapActivityRecord(activity, activity.scope),
+            ),
             pagination: {
                 page,
                 limit,
@@ -72,8 +86,10 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error) {
-        console.error("Activities GET error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 },
+        );
     }
 }
 
@@ -81,19 +97,27 @@ export async function POST(request: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json(
+                { error: "Unauthorized" },
+                { status: 401 },
+            );
         }
 
-        console.log("Session user:", session.user);
+        if (!canCreateActivities(session.user.role)) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
 
-        if (!session.user.organizationId && session.user.role !== "super_admin") {
-            return NextResponse.json({ error: "No organization associated", debug: session.user }, { status: 400 });
+        if (
+            !session.user.organizationId &&
+            session.user.role !== "super_admin"
+        ) {
+            return NextResponse.json(
+                { error: "No organization associated" },
+                { status: 400 },
+            );
         }
 
         const body = await request.json();
-        console.log("=== FULL REQUEST BODY ===");
-        console.log(JSON.stringify(body, null, 2));
-        console.log("=========================");
         const {
             scope,
             scope3Category,
@@ -106,11 +130,21 @@ export async function POST(request: NextRequest) {
         } = body;
 
         if (!scope || !activityType || inputValue === undefined) {
-            return NextResponse.json({ error: "Missing required fields: scope, activityType, inputValue" }, { status: 400 });
+            return NextResponse.json(
+                {
+                    error: "Missing required fields: scope, activityType, inputValue",
+                },
+                { status: 400 },
+            );
         }
 
         if (!session.user.organizationId) {
-            return NextResponse.json({ error: "User must belong to an organization to create activities" }, { status: 400 });
+            return NextResponse.json(
+                {
+                    error: "User must belong to an organization to create activities",
+                },
+                { status: 400 },
+            );
         }
 
         const organizationId = session.user.organizationId;
@@ -127,7 +161,11 @@ export async function POST(request: NextRequest) {
                 reportingYearId = reportingYear.id;
             } else {
                 const newYear = await prisma.reportingYear.create({
-                    data: { organizationId: organizationId, year: currentYear, status: "draft" },
+                    data: {
+                        organizationId: organizationId,
+                        year: currentYear,
+                        status: "draft",
+                    },
                 });
                 reportingYearId = newYear.id;
             }
@@ -144,63 +182,47 @@ export async function POST(request: NextRequest) {
                 where: { id: organizationId },
                 select: { country: true },
             });
-            
+
             const factorWhere: Record<string, unknown> = {
                 category: scope,
                 country: org?.country || "US",
-                OR: [
-                    { isCustom: false },
-                    { organizationId: organizationId },
-                ],
+                OR: [{ isCustom: false }, { organizationId: organizationId }],
             };
-            
+
             if (scope3Category) {
                 factorWhere.scope3Category = scope3Category;
             }
-            
+
             const matchedFactor = await prisma.emissionFactor.findFirst({
                 where: factorWhere,
                 orderBy: { isCustom: "desc" },
             });
-            
+
             if (matchedFactor) {
                 matchedFactorId = matchedFactor.id;
             }
         }
 
-        console.log("matchedFactorId:", matchedFactorId);
-        console.log("inputValue:", inputValue, "inputUnit:", inputUnit);
-        
         if (matchedFactorId) {
             const factor = await prisma.emissionFactor.findUnique({
                 where: { id: matchedFactorId },
             });
-            console.log("Factor found:", factor);
-            
+
             if (factor) {
                 try {
                     const result = calculateEmissions(
-                        Number(inputValue), 
-                        String(inputUnit), 
-                        Number(factor.factorValue), 
-                        String(scope) as "scope1" | "scope2" | "scope3"
+                        Number(inputValue),
+                        String(inputUnit),
+                        Number(factor.factorValue),
+                        String(factor.activityUnit),
                     );
-                    console.log("Calculation result:", result);
                     convertedValue = result.convertedValue;
                     convertedUnit = result.convertedUnit;
                     calculatedEmissions = result.calculatedEmissions;
-                } catch (calcError) {
-                    console.error("Calculation error:", calcError);
-                }
+                } catch {}
             }
         }
 
-        console.log("=== SAVING TO DB ===");
-        console.log("calculatedEmissions:", calculatedEmissions, "type:", typeof calculatedEmissions);
-        console.log("convertedValue:", convertedValue);
-        console.log("convertedUnit:", convertedUnit);
-        console.log("===================");
-        
         const activity = await prisma.activityData.create({
             data: {
                 organizationId,
@@ -236,16 +258,17 @@ export async function POST(request: NextRequest) {
             },
         });
 
-        console.log("=== BEFORE RETURN ===");
-        console.log("Returning activity with emissions:", activity.calculatedEmissions);
-        console.log("======================");
-        
         return NextResponse.json(activity, { status: 201 });
     } catch (error) {
-        console.error("Activities POST error:", error);
         if (error instanceof Error) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            return NextResponse.json(
+                { error: "Invalid request" },
+                { status: 400 },
+            );
         }
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 },
+        );
     }
 }

@@ -46,6 +46,10 @@ export const CONVERSION_FACTORS = {
         gallon: 3.78541,
         liter: 1,
     },
+    gasVolume: {
+        m3: 1,
+        scf: 0.0283168,
+    },
     energy: {
         kWh: 1,
         MWh: 1000,

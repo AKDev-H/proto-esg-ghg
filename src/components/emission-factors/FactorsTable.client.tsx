@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -29,42 +29,18 @@ interface PaginationInfo {
 }
 
 interface FactorsTableClientProps {
-    initialFactors: EmissionFactor[]
-    initialPagination: PaginationInfo
+    factors: EmissionFactor[]
+    pagination: PaginationInfo
+    canManageFactors?: boolean
 }
 
-export function FactorsTableClient({ initialFactors, initialPagination }: FactorsTableClientProps) {
+export function FactorsTableClient({ factors, pagination, canManageFactors = false }: FactorsTableClientProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const [factors, setFactors] = useState(initialFactors ?? [])
-    const [pagination, setPagination] = useState(initialPagination)
-    const [loading, setLoading] = useState(false)
     const [editingFactor, setEditingFactor] = useState<EmissionFactor | null>(null)
-    const [key, setKey] = useState(0)
 
     const filterCategory = searchParams.get("category") || "all"
-    const currentPage = parseInt(searchParams.get("page") || "1")
-
-    const fetchFactors = async (page: number, category: string) => {
-        setLoading(true)
-        try {
-            const params = new URLSearchParams()
-            params.set("page", page.toString())
-            params.set("limit", "10")
-            if (category !== "all") {
-                params.set("category", category)
-            }
-
-            const res = await fetch(`/api/factors?${params.toString()}`, { credentials: "same-origin" })
-            const data = await res.json()
-            setFactors(data.factors)
-            setPagination(data.pagination)
-        } catch (error) {
-            console.error(error)
-        } finally {
-            setLoading(false)
-        }
-    }
+    const columnCount = canManageFactors ? 8 : 7
 
     const handlePageChange = (page: number) => {
         const params = new URLSearchParams(searchParams.toString())
@@ -83,10 +59,6 @@ export function FactorsTableClient({ initialFactors, initialPagination }: Factor
         router.push(`/factors?${params.toString()}`)
     }
 
-    useEffect(() => {
-        fetchFactors(currentPage, filterCategory)
-    }, [currentPage, filterCategory])
-
     const handleEdit = (factor: EmissionFactor) => {
         setEditingFactor(factor)
     }
@@ -95,13 +67,11 @@ export function FactorsTableClient({ initialFactors, initialPagination }: Factor
         setEditingFactor(null)
     }
 
-    const handleSuccess = async () => {
+    const handleSuccess = () => {
         setEditingFactor(null)
-        setKey((k) => k + 1)
-        fetchFactors(currentPage, filterCategory)
+        router.refresh()
     }
 
-    const factorsList = factors || []
     const paginationInfo = pagination || { page: 1, limit: 10, total: 0, totalPages: 1 }
 
     return (
@@ -130,24 +100,18 @@ export function FactorsTableClient({ initialFactors, initialPagination }: Factor
                             <TableHead>Source</TableHead>
                             <TableHead>Country</TableHead>
                             <TableHead>Valid From</TableHead>
-                            <TableHead>Actions</TableHead>
+                            {canManageFactors && <TableHead>Actions</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={8} className="text-center py-8">
-                                    Loading...
-                                </TableCell>
-                            </TableRow>
-                        ) : factorsList.length === 0 ? (
+                        {factors.length === 0 ? (
                             <TableEmptyState 
-                                colSpan={8}
+                                colSpan={columnCount}
                                 title="No emission factors found"
                                 description="Add or import emission factors to get started."
                             />
                         ) : (
-                            factorsList.map((factor) => (
+                            factors.map((factor) => (
                                 <TableRow key={factor.id}>
                                     <TableCell>
                                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted">
@@ -164,11 +128,13 @@ export function FactorsTableClient({ initialFactors, initialPagination }: Factor
                                     </TableCell>
                                     <TableCell>{factor.country === "US" ? "United States" : factor.country === "MY" ? "Malaysia" : factor.country}</TableCell>
                                     <TableCell>{new Date(factor.validFrom).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" })}</TableCell>
-                                    <TableCell>
-                                        <Button size="sm" variant="outline" onClick={() => handleEdit(factor)}>
-                                            Edit
-                                        </Button>
-                                    </TableCell>
+                                    {canManageFactors && (
+                                        <TableCell>
+                                            <Button size="sm" variant="outline" onClick={() => handleEdit(factor)}>
+                                                Edit
+                                            </Button>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             ))
                         )}
@@ -211,8 +177,10 @@ export function FactorsTableClient({ initialFactors, initialPagination }: Factor
                     </div>
                 )}
             </div>
-            <FactorsCard factors={factorsList} onEdit={handleEdit} />
-            <FactorsForm editFactor={editingFactor} onCancelEdit={handleCancelEdit} onSuccess={handleSuccess} />
+            <FactorsCard factors={factors} onEdit={canManageFactors ? handleEdit : undefined} />
+            {canManageFactors && (
+                <FactorsForm editFactor={editingFactor} onCancelEdit={handleCancelEdit} onSuccess={handleSuccess} />
+            )}
         </div>
     )
 }

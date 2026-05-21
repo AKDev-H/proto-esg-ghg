@@ -1,25 +1,24 @@
 "use client";
 
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { endOfLifeSchema } from "@/modules/scope3/schemas";
+import { Scope3ActivityFormShell } from "@/modules/scope3/components/scope3-activity-form-shell";
+import { useCreateActivityForm } from "@/modules/activities/hooks/use-create-activity-form";
+import type { EmissionFactorOption } from "@/modules/activities/types";
 import type { EndOfLifeFormData, DisposalType } from "@/modules/scope3/types";
 
 interface EndOfLifeFormProps {
-    factors: Array<{ id: string; activityType: string; factorValue: number; activityUnit: string }>;
+    factors: EmissionFactorOption[];
     onSuccess?: () => void;
 }
 
 export function EndOfLifeForm({ factors, onSuccess }: EndOfLifeFormProps) {
-    const router = useRouter();
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [selectedFactor, setSelectedFactor] = useState<string>("");
+    const { isSubmitting, selectedFactorId, setSelectedFactorId, submit, resetFactor } =
+        useCreateActivityForm({ onSuccess });
 
     const form = useForm<EndOfLifeFormData>({
         resolver: zodResolver(endOfLifeSchema),
@@ -27,50 +26,42 @@ export function EndOfLifeForm({ factors, onSuccess }: EndOfLifeFormProps) {
     });
 
     const onSubmit = async (data: EndOfLifeFormData) => {
-        setIsSubmitting(true);
-        try {
-            const res = await fetch("/api/activities", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    scope: "scope3",
-                    scope3Category: "cat12_end_of_life",
-                    activityType: "end_of_life",
-                    inputValue: data.wasteQuantity,
-                    inputUnit: data.unit,
-                    emissionFactorId: selectedFactor || undefined,
-                }),
-            });
-
-            if (res.ok) {
-                const activity = await res.json();
-                await fetch(`/api/activities/${activity.id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        scope3EndOfLife: {
-                            create: {
-                                disposalType: data.disposalType,
-                                wasteQuantity: data.wasteQuantity,
-                                unit: data.unit,
-                            },
-                        },
-                    }),
-                });
-                router.refresh();
-                form.reset();
-                setSelectedFactor("");
-                onSuccess?.();
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsSubmitting(false);
+        const ok = await submit(
+            {
+                scope: "scope3",
+                scope3Category: "cat12_end_of_life",
+                activityType: "end_of_life",
+                inputValue: data.wasteQuantity,
+                inputUnit: data.unit,
+            },
+            {
+                scope3EndOfLife: {
+                    create: {
+                        disposalType: data.disposalType,
+                        wasteQuantity: data.wasteQuantity,
+                        unit: data.unit,
+                    },
+                },
+            },
+        );
+        if (ok) {
+            form.reset();
+            resetFactor();
         }
     };
 
     return (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <Scope3ActivityFormShell
+            factors={factors}
+            isSubmitting={isSubmitting}
+            selectedFactorId={selectedFactorId}
+            onFactorChange={setSelectedFactorId}
+            onSubmit={form.handleSubmit(onSubmit)}
+            preview={{
+                value: form.watch("wasteQuantity") || 0,
+                unit: form.watch("unit") || "kg",
+            }}
+        >
             <div className="space-y-2">
                 <Label>Disposal Type</Label>
                 <Select value={form.watch("disposalType")} onValueChange={(v) => form.setValue("disposalType", v as DisposalType)}>
@@ -100,22 +91,6 @@ export function EndOfLifeForm({ factors, onSuccess }: EndOfLifeFormProps) {
                     </Select>
                 </div>
             </div>
-            <div className="space-y-2">
-                <Label>Emission Factor</Label>
-                <Select value={selectedFactor} onValueChange={setSelectedFactor}>
-                    <SelectTrigger><SelectValue placeholder="Select emission factor" /></SelectTrigger>
-                    <SelectContent>
-                        {factors.map((f) => (
-                            <SelectItem key={f.id} value={f.id}>
-                                {f.activityType} - {f.factorValue} kgCO2e/{f.activityUnit}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Add"}
-            </Button>
-        </form>
+        </Scope3ActivityFormShell>
     );
 }

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { canManageFactors } from "@/lib/permissions";
 import { FactorsTableClient } from "@/components/emission-factors/FactorsTable.client";
 import type { EmissionFactor } from "@/modules/emission-factors/types";
 
@@ -58,10 +59,17 @@ export default async function FactorsPage({ searchParams }: Props) {
         totalPages: Math.ceil(total / limit),
     };
 
+    const canEditFactors = canManageFactors(session?.user?.role);
+
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold">Emission Factors</h1>
-            <FactorsTableClient initialFactors={formattedFactors} initialPagination={pagination} />
+            <FactorsTableClient
+                key={`${page}-${params.category ?? "all"}`}
+                factors={formattedFactors}
+                pagination={pagination}
+                canManageFactors={canEditFactors}
+            />
         </div>
     );
 }

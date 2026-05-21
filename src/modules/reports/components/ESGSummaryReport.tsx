@@ -7,6 +7,7 @@ import {
     pdf,
 } from "@react-pdf/renderer";
 import type { Country } from "@prisma/client";
+import type { GHGActionPlan } from "@/modules/reports/services/generate-ghg-action-plan";
 
 const styles = StyleSheet.create({
     page: {
@@ -311,6 +312,7 @@ interface ESGSummaryData {
     scope2Percentage: number;
     scope3Percentage: number;
     scope3Categories: Array<{
+        categoryKey?: string;
         category: string;
         emissions: number;
         percentage: number;
@@ -321,6 +323,7 @@ interface ESGSummaryData {
         emissions: number;
         scope: string;
     }>;
+    actionPlan: GHGActionPlan;
     countryContext: {
         benchmark: string;
         unit: string;
@@ -1130,6 +1133,9 @@ function Page3({ data }: { data: ESGSummaryData }) {
 }
 
 function Page4({ data }: { data: ESGSummaryData }) {
+    const { actionPlan } = data;
+    const phaseColors = ["#2563eb", "#7c3aed", "#059669"];
+
     return (
         <Page size="A4" style={styles.page}>
             <View style={styles.header}>
@@ -1144,110 +1150,106 @@ function Page4({ data }: { data: ESGSummaryData }) {
 
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>
-                    Key Performance Indicators
+                    GHG Protocol Prioritization
                 </Text>
+                <View style={styles.infoBox}>
+                    <Text style={styles.infoBoxText}>
+                        {actionPlan.prioritizationSummary}
+                    </Text>
+                </View>
+                {actionPlan.materialFocusAreas.length > 0 && (
+                    <View style={[styles.card, { marginTop: 10 }]}>
+                        <Text style={{ fontSize: 9, fontWeight: "bold", marginBottom: 6 }}>
+                            Material focus areas:
+                        </Text>
+                        {actionPlan.materialFocusAreas.map((area) => (
+                            <Text key={area} style={styles.recommendationText}>
+                                • {area}
+                            </Text>
+                        ))}
+                    </View>
+                )}
+            </View>
+
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Key Performance Indicators</Text>
                 <View style={styles.kpiGrid}>
                     <View style={styles.kpiBox}>
-                        <Text style={styles.kpiValue}>
-                            {data.activityCount}
-                        </Text>
+                        <Text style={styles.kpiValue}>{data.activityCount}</Text>
                         <Text style={styles.kpiLabel}>Activities Tracked</Text>
                     </View>
                     <View style={styles.kpiBox}>
                         <Text style={styles.kpiValue}>
                             {data.activityCount > 0
-                                ? (
-                                      data.totalEmissions / data.activityCount
-                                  ).toFixed(0)
+                                ? (data.totalEmissions / data.activityCount).toFixed(0)
                                 : "—"}
                         </Text>
                         <Text style={styles.kpiLabel}>kg CO₂e / Activity</Text>
                     </View>
                     <View style={styles.kpiBox}>
-                        <Text style={styles.kpiValue}>
-                            {data.organization.country}
-                        </Text>
-                        <Text style={styles.kpiLabel}>Benchmark Region</Text>
+                        <Text style={styles.kpiValue}>{data.organization.country}</Text>
+                        <Text style={styles.kpiLabel}>Inventory Region</Text>
                     </View>
                     <View style={styles.kpiBox}>
                         <Text style={[styles.kpiValue, { color: "#059669" }]}>
-                            Baseline
+                            {data.reportingYear}
                         </Text>
-                        <Text style={styles.kpiLabel}>Reporting Status</Text>
+                        <Text style={styles.kpiLabel}>Base Year</Text>
                     </View>
                 </View>
             </View>
 
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Action Plan Timeline</Text>
+                {actionPlan.phases.map((phase, index) => (
+                    <View
+                        key={phase.title}
+                        style={[
+                            styles.recommendationItem,
+                            { borderLeftColor: phaseColors[index] ?? "#2563eb" },
+                        ]}
+                    >
+                        <Text style={styles.recommendationTitle}>
+                            {phase.title} ({phase.timeframe})
+                        </Text>
+                        <Text style={[styles.recommendationText, { marginBottom: 4, fontStyle: "italic" }]}>
+                            GHG Protocol focus: {phase.protocolFocus}
+                        </Text>
+                        {phase.actions.map((action) => (
+                            <Text key={action} style={styles.recommendationText}>
+                                • {action}
+                            </Text>
+                        ))}
+                    </View>
+                ))}
+            </View>
 
-                <View
-                    style={[
-                        styles.recommendationItem,
-                        { borderLeftColor: "#2563eb" },
-                    ]}
-                >
-                    <Text style={styles.recommendationTitle}>
-                        Immediate (0-3 months)
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Scope-Specific Reduction Measures</Text>
+                <View style={styles.card}>
+                    <Text style={{ fontSize: 9, fontWeight: "bold", marginBottom: 4, color: COLORS.scope1 }}>
+                        Scope 1 — Direct emissions
                     </Text>
-                    <Text style={styles.recommendationText}>
-                        • Complete energy audit to identify efficiency
-                        opportunities
+                    {actionPlan.scopeActions.scope1.map((action) => (
+                        <Text key={action} style={styles.recommendationText}>• {action}</Text>
+                    ))}
+                    <Text style={{ fontSize: 9, fontWeight: "bold", marginTop: 8, marginBottom: 4, color: COLORS.scope2 }}>
+                        Scope 2 — Purchased energy
                     </Text>
-                    <Text style={styles.recommendationText}>
-                        • Identify quick wins in operations
+                    {actionPlan.scopeActions.scope2.map((action) => (
+                        <Text key={action} style={styles.recommendationText}>• {action}</Text>
+                    ))}
+                    <Text style={{ fontSize: 9, fontWeight: "bold", marginTop: 8, marginBottom: 4, color: COLORS.scope3 }}>
+                        Scope 3 — Value chain
                     </Text>
-                    <Text style={styles.recommendationText}>
-                        • Engage top 5 suppliers on sustainability commitments
-                    </Text>
-                </View>
-
-                <View
-                    style={[
-                        styles.recommendationItem,
-                        { borderLeftColor: "#7c3aed" },
-                    ]}
-                >
-                    <Text style={styles.recommendationTitle}>
-                        Short-term (3-12 months)
-                    </Text>
-                    <Text style={styles.recommendationText}>
-                        • Implement energy efficiency measures identified in
-                        audit
-                    </Text>
-                    <Text style={styles.recommendationText}>
-                        • Set science-based emission reduction targets
-                    </Text>
-                    <Text style={styles.recommendationText}>
-                        • Launch supplier sustainability program
-                    </Text>
-                </View>
-
-                <View
-                    style={[
-                        styles.recommendationItem,
-                        { borderLeftColor: "#059669" },
-                    ]}
-                >
-                    <Text style={styles.recommendationTitle}>
-                        Long-term (1-3 years)
-                    </Text>
-                    <Text style={styles.recommendationText}>
-                        • Transition to renewable energy (solar PPA or PPAs)
-                    </Text>
-                    <Text style={styles.recommendationText}>
-                        • Product lifecycle improvements for Scope 3 reduction
-                    </Text>
-                    <Text style={styles.recommendationText}>
-                        • Net-zero target alignment with 1.5°C scenario
-                    </Text>
+                    {actionPlan.scopeActions.scope3.map((action) => (
+                        <Text key={action} style={styles.recommendationText}>• {action}</Text>
+                    ))}
                 </View>
             </View>
 
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>
-                    Methodology & Disclaimer
-                </Text>
+                <Text style={styles.sectionTitle}>Methodology & Disclaimer</Text>
                 <View style={styles.card}>
                     <View style={{ flexDirection: "row", marginBottom: 8 }}>
                         <Text
@@ -1313,6 +1315,13 @@ function Page4({ data }: { data: ESGSummaryData }) {
                 </View>
 
                 <View style={[styles.infoBox, { marginTop: 15 }]}>
+                    <Text style={styles.infoBoxText}>
+                        <Text style={{ fontWeight: "bold" }}>Target setting:</Text>{" "}
+                        {actionPlan.targetSettingGuidance}
+                    </Text>
+                </View>
+
+                <View style={[styles.infoBox, { marginTop: 10 }]}>
                     <Text style={styles.infoBoxText}>
                         <Text style={{ fontWeight: "bold" }}>Disclaimer:</Text>{" "}
                         This report has been prepared in accordance with the GHG

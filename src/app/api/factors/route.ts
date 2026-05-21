@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
-import { ADMIN_ROLES } from '@/modules/auth/types'
+import { canManageFactors } from '@/lib/permissions'
 import { factorSchema, factorFilterSchema } from '@/modules/emission-factors/schemas'
 
 export async function GET(request: NextRequest) {
@@ -59,7 +59,6 @@ const [factors, total] = await Promise.all([
             },
         })
     } catch (error) {
-        console.error('Factors GET error:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }
@@ -71,7 +70,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        if (!ADMIN_ROLES.includes(session.user.role)) {
+        if (!canManageFactors(session.user.role)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         }
 
@@ -96,7 +95,6 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json(factor, { status: 201 })
     } catch (error) {
-        console.error('Factors POST error:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }

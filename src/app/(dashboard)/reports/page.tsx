@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { ReportsList } from "@/components/reports/ReportsList"
+import { canGenerateReports, canDeleteReports } from "@/lib/permissions"
 import type { Report } from "@/modules/reports/types"
 
 export const dynamic = "force-dynamic"
@@ -52,5 +53,13 @@ export default async function ReportsPage({ searchParams }: Props) {
         totalPages: Math.ceil(total / PAGE_SIZE),
     }
 
-    return <ReportsList initialReports={formattedReports} initialPagination={pagination} />
+    return (
+        <ReportsList
+            key={page}
+            reports={formattedReports}
+            pagination={pagination}
+            canGenerateReports={canGenerateReports(session?.user?.role)}
+            canDeleteReports={canDeleteReports(session?.user?.role)}
+        />
+    )
 }

@@ -80,7 +80,6 @@ export default function SuperAdminUsersPage() {
                 setOrganizations(await orgsRes.json());
             }
         } catch (error) {
-            console.error("Failed to fetch data:", error);
         } finally {
             setLoading(false);
         }
@@ -157,7 +156,6 @@ export default function SuperAdminUsersPage() {
                 fetchData();
             }
         } catch (error) {
-            console.error("Failed to save user:", error);
         }
     };
 
@@ -174,7 +172,6 @@ export default function SuperAdminUsersPage() {
                 fetchData();
             }
         } catch (error) {
-            console.error("Failed to delete user:", error);
         }
     };
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { canManageOrgSettings } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
@@ -65,7 +66,7 @@ export async function PUT(
             );
         }
 
-        if (!["super_admin", "org_admin"].includes(session.user.role)) {
+        if (!canManageOrgSettings(session.user.role)) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 

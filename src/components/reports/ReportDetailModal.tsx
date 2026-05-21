@@ -1,11 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { X, Download, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Leaf } from "lucide-react"
 import {
     PieChart,
     Pie,
@@ -19,6 +18,8 @@ import {
     ResponsiveContainer,
     Legend,
 } from "recharts"
+import { X, Download, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Leaf } from "lucide-react"
+import type { GHGActionPlan } from "@/modules/reports/services/generate-ghg-action-plan"
 
 const COLORS = {
     scope1: "#ef4444",
@@ -53,6 +54,7 @@ interface ReportData {
         }
         byCategory: Record<string, { count: number; emissions: number }>
     }
+    actionPlan: GHGActionPlan
 }
 
 export function ReportDetailModal({ reportId, onClose, onDownload }: ReportDetailModalProps) {
@@ -60,15 +62,15 @@ export function ReportDetailModal({ reportId, onClose, onDownload }: ReportDetai
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState("summary")
 
-    useState(() => {
+    useEffect(() => {
         fetch(`/api/reports/${reportId}`)
             .then((res) => res.json())
-            .then((data) => {
-                setData(data)
+            .then((responseData) => {
+                setData(responseData)
                 setLoading(false)
             })
             .catch(() => setLoading(false))
-    })
+    }, [reportId])
 
     if (loading) {
         return (
@@ -468,38 +470,68 @@ export function ReportDetailModal({ reportId, onClose, onDownload }: ReportDetai
                         </TabsContent>
 
                         <TabsContent value="action" className="space-y-6 mt-0">
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5">
+                                <h3 className="font-semibold text-emerald-900 mb-2">GHG Protocol Prioritization</h3>
+                                <p className="text-sm text-emerald-800">{data.actionPlan.prioritizationSummary}</p>
+                                {data.actionPlan.materialFocusAreas.length > 0 && (
+                                    <ul className="mt-3 space-y-1 text-sm text-emerald-800">
+                                        {data.actionPlan.materialFocusAreas.map((area) => (
+                                            <li key={area}>• {area}</li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="bg-blue-50 border border-blue-100 rounded-xl p-5">
-                                    <h4 className="font-semibold text-blue-900 flex items-center gap-2 mb-3">
-                                        <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">1</span>
-                                        Immediate (0-3 months)
-                                    </h4>
-                                    <ul className="space-y-2 text-sm text-blue-800">
-                                        <li>• Complete energy audit</li>
-                                        <li>• Identify quick wins in operations</li>
-                                        <li>• Engage top 5 suppliers on sustainability</li>
+                                {data.actionPlan.phases.map((phase, index) => {
+                                    const colors = [
+                                        "bg-blue-50 border-blue-100 text-blue-900",
+                                        "bg-purple-50 border-purple-100 text-purple-900",
+                                        "bg-green-50 border-green-100 text-green-900",
+                                    ]
+                                    const badgeColors = ["bg-blue-500", "bg-purple-500", "bg-green-500"]
+                                    return (
+                                        <div key={phase.title} className={`border rounded-xl p-5 ${colors[index]}`}>
+                                            <h4 className="font-semibold flex items-center gap-2 mb-1">
+                                                <span className={`w-6 h-6 rounded-full ${badgeColors[index]} text-white text-xs flex items-center justify-center`}>
+                                                    {index + 1}
+                                                </span>
+                                                {phase.title} ({phase.timeframe})
+                                            </h4>
+                                            <p className="text-xs opacity-80 mb-3">GHG Protocol: {phase.protocolFocus}</p>
+                                            <ul className="space-y-2 text-sm">
+                                                {phase.actions.map((action) => (
+                                                    <li key={action}>• {action}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="bg-white border rounded-xl p-5">
+                                    <h4 className="font-semibold text-red-700 mb-3">Scope 1 Actions</h4>
+                                    <ul className="space-y-2 text-sm text-muted-foreground">
+                                        {data.actionPlan.scopeActions.scope1.map((action) => (
+                                            <li key={action}>• {action}</li>
+                                        ))}
                                     </ul>
                                 </div>
-                                <div className="bg-purple-50 border border-purple-100 rounded-xl p-5">
-                                    <h4 className="font-semibold text-purple-900 flex items-center gap-2 mb-3">
-                                        <span className="w-6 h-6 rounded-full bg-purple-500 text-white text-xs flex items-center justify-center">2</span>
-                                        Short-term (3-12 months)
-                                    </h4>
-                                    <ul className="space-y-2 text-sm text-purple-800">
-                                        <li>• Implement energy efficiency measures</li>
-                                        <li>• Set science-based targets</li>
-                                        <li>• Supplier sustainability program</li>
+                                <div className="bg-white border rounded-xl p-5">
+                                    <h4 className="font-semibold text-amber-700 mb-3">Scope 2 Actions</h4>
+                                    <ul className="space-y-2 text-sm text-muted-foreground">
+                                        {data.actionPlan.scopeActions.scope2.map((action) => (
+                                            <li key={action}>• {action}</li>
+                                        ))}
                                     </ul>
                                 </div>
-                                <div className="bg-green-50 border border-green-100 rounded-xl p-5">
-                                    <h4 className="font-semibold text-green-900 flex items-center gap-2 mb-3">
-                                        <span className="w-6 h-6 rounded-full bg-green-500 text-white text-xs flex items-center justify-center">3</span>
-                                        Long-term (1-3 years)
-                                    </h4>
-                                    <ul className="space-y-2 text-sm text-green-800">
-                                        <li>• Renewable energy transition</li>
-                                        <li>• Product lifecycle improvements</li>
-                                        <li>• Net-zero target alignment</li>
+                                <div className="bg-white border rounded-xl p-5">
+                                    <h4 className="font-semibold text-violet-700 mb-3">Scope 3 Actions</h4>
+                                    <ul className="space-y-2 text-sm text-muted-foreground">
+                                        {data.actionPlan.scopeActions.scope3.map((action) => (
+                                            <li key={action}>• {action}</li>
+                                        ))}
                                     </ul>
                                 </div>
                             </div>
@@ -524,10 +556,15 @@ export function ReportDetailModal({ reportId, onClose, onDownload }: ReportDetai
                                         <p className="text-xs text-muted-foreground">Benchmark Region</p>
                                     </div>
                                     <div className="text-center p-4 bg-muted/50 rounded-lg">
-                                        <p className="text-2xl font-bold">Baseline</p>
-                                        <p className="text-xs text-muted-foreground">Reporting Status</p>
+                                        <p className="text-2xl font-bold">{data.reportingYear}</p>
+                                        <p className="text-xs text-muted-foreground">Base Year</p>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div className="bg-white border rounded-xl p-5">
+                                <h3 className="font-semibold mb-2">Target Setting (GHG Protocol)</h3>
+                                <p className="text-sm text-muted-foreground">{data.actionPlan.targetSettingGuidance}</p>
                             </div>
 
                             <div className="bg-gradient-to-r from-slate-50 to-gray-50 border rounded-xl p-6">

@@ -14,8 +14,8 @@ export function StatCard({ title, value, unit = "tCO2e", description }: StatCard
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        <p className="text-xs text-muted-foreground">{unit}</p>
+        <div className="text-2xl font-bold tabular-nums">{value}</div>
+        <p className="text-xs text-muted-foreground">{description ?? unit}</p>
       </CardContent>
     </Card>
   )

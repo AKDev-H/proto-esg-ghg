@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Settings, Building2, Users, Pencil, Save, X } from "lucide-react";
 import type { OrganizationUser } from "@/modules/organizations/types";
+import { canManageOrgSettings } from "@/lib/permissions";
 
 interface OrganizationViewProps {
     organization: {
@@ -97,7 +98,7 @@ export function OrganizationView({
         },
     });
 
-    const canEdit = userRole === "org_admin" || userRole === "super_admin";
+    const canEdit = canManageOrgSettings(userRole);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -119,7 +120,6 @@ export function OrganizationView({
                 router.refresh();
             }
         } catch (error) {
-            console.error("Failed to save:", error);
         } finally {
             setIsSaving(false);
         }

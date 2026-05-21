@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -46,7 +45,6 @@ const ACTIVITY_UNITS = [
 ]
 
 export function FactorsForm({ onSuccess, editFactor, onCancelEdit }: FactorsFormProps) {
-    const router = useRouter()
     const [isOpen, setIsOpen] = useState(false)
     const isEditMode = !!editFactor
 
@@ -91,12 +89,10 @@ export function FactorsForm({ onSuccess, editFactor, onCancelEdit }: FactorsForm
             if (res.ok) {
                 setIsOpen(false)
                 form.reset({ category: "scope1", country: "US" })
-                router.refresh()
                 onSuccess?.()
                 onCancelEdit?.()
             }
         } catch (error) {
-            console.error(error)
         }
     }
 

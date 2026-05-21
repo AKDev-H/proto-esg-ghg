@@ -38,7 +38,6 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(logs)
     } catch (error) {
-        console.error('Audit logs error:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }

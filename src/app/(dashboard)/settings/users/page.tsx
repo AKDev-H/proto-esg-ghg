@@ -1,17 +1,23 @@
-import { prisma } from "@/lib/prisma"
-import { auth } from "@/lib/auth"
-import { UserForm } from "@/components/users/UserForm"
-import { UsersTable } from "@/components/users/UsersTable"
-import type { User } from "@/modules/users/types"
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { canManageUsers } from "@/lib/permissions";
+import { UsersManagement } from "@/modules/users/components/users-management";
+import { redirect } from "next/navigation";
+import type { User } from "@/modules/users/types";
 
 export default async function UserManagementPage() {
-    const session = await auth()
-    const organizationId = session?.user?.organizationId
+    const session = await auth();
+
+    if (!canManageUsers(session?.user?.role)) {
+        redirect("/dashboard");
+    }
+
+    const organizationId = session?.user?.organizationId;
 
     const users = await prisma.user.findMany({
         where: organizationId ? { organizationId } : {},
         orderBy: { createdAt: "desc" },
-    })
+    });
 
     const formattedUsers: User[] = users.map((u) => ({
         id: u.id,
@@ -21,16 +27,12 @@ export default async function UserManagementPage() {
         organizationId: u.organizationId,
         createdAt: u.createdAt.toISOString(),
         updatedAt: u.updatedAt.toISOString(),
-    }))
+    }));
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold">User Management</h1>
-                <UserForm />
-            </div>
-
-            <UsersTable initialUsers={formattedUsers} currentUserId={session?.user?.id} />
-        </div>
-    )
+        <UsersManagement
+            users={formattedUsers}
+            currentUserId={session?.user?.id}
+        />
+    );
 }

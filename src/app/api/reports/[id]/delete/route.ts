@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { ADMIN_ROLES } from "@/types";
+import { canDeleteReports } from "@/lib/permissions";
 
 export async function DELETE(
     request: NextRequest,
@@ -24,12 +24,7 @@ export async function DELETE(
             return NextResponse.json({ error: "Report not found" }, { status: 404 });
         }
 
-        const canDelete = 
-            session.user.role === "super_admin" ||
-            session.user.role === "org_admin" ||
-            (session.user.organizationId === report.organizationId && ADMIN_ROLES.includes(session.user.role));
-
-        if (!canDelete) {
+        if (!canDeleteReports(session.user.role)) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
@@ -50,7 +45,6 @@ export async function DELETE(
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("Report delete error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

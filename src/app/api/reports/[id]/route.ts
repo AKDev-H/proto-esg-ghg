@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { buildReportSummaryFromActivities } from "@/modules/reports/services/build-report-summary";
 
 export async function GET(
     request: NextRequest,
@@ -57,28 +58,11 @@ export async function GET(
             },
         });
 
-        const totalEmissions = activities.reduce(
-            (sum, a) => sum + (a.calculatedEmissions ?? 0),
-            0,
+        const summary = buildReportSummaryFromActivities(
+            activities,
+            report.organization.country,
+            report.organization.industryType,
         );
-
-        const byScope = {
-            scope1: 0,
-            scope2: 0,
-            scope3: 0,
-        };
-        const byCategory: Record<string, { count: number; emissions: number }> = {};
-
-        for (const activity of activities) {
-            byScope[activity.scope as keyof typeof byScope] += activity.calculatedEmissions ?? 0;
-            if (activity.scope === "scope3" && activity.scope3Category) {
-                if (!byCategory[activity.scope3Category]) {
-                    byCategory[activity.scope3Category] = { count: 0, emissions: 0 };
-                }
-                byCategory[activity.scope3Category].count++;
-                byCategory[activity.scope3Category].emissions += activity.calculatedEmissions ?? 0;
-            }
-        }
 
         const reportData = {
             id: report.id,
@@ -95,33 +79,38 @@ export async function GET(
             generatedBy: report.generatedBy,
             createdAt: report.createdAt.toISOString(),
             summary: {
-                totalEmissionsKg: totalEmissions,
-                totalEmissionsTon: (totalEmissions / 1000).toFixed(2),
-                activityCount: activities.length,
+                totalEmissionsKg: summary.totalEmissions,
+                totalEmissionsTon: (summary.totalEmissions / 1000).toFixed(2),
+                activityCount: summary.activityCount,
                 byScope: {
                     scope1: {
-                        emissionsKg: byScope.scope1,
-                        emissionsTon: (byScope.scope1 / 1000).toFixed(2),
-                        percentage: totalEmissions > 0 ? ((byScope.scope1 / totalEmissions) * 100).toFixed(1) : "0",
+                        emissionsKg: summary.scope1Emissions,
+                        emissionsTon: (summary.scope1Emissions / 1000).toFixed(2),
+                        percentage: summary.totalEmissions > 0 ? ((summary.scope1Emissions / summary.totalEmissions) * 100).toFixed(1) : "0",
                     },
                     scope2: {
-                        emissionsKg: byScope.scope2,
-                        emissionsTon: (byScope.scope2 / 1000).toFixed(2),
-                        percentage: totalEmissions > 0 ? ((byScope.scope2 / totalEmissions) * 100).toFixed(1) : "0",
+                        emissionsKg: summary.scope2Emissions,
+                        emissionsTon: (summary.scope2Emissions / 1000).toFixed(2),
+                        percentage: summary.totalEmissions > 0 ? ((summary.scope2Emissions / summary.totalEmissions) * 100).toFixed(1) : "0",
                     },
                     scope3: {
-                        emissionsKg: byScope.scope3,
-                        emissionsTon: (byScope.scope3 / 1000).toFixed(2),
-                        percentage: totalEmissions > 0 ? ((byScope.scope3 / totalEmissions) * 100).toFixed(1) : "0",
+                        emissionsKg: summary.scope3Emissions,
+                        emissionsTon: (summary.scope3Emissions / 1000).toFixed(2),
+                        percentage: summary.totalEmissions > 0 ? ((summary.scope3Emissions / summary.totalEmissions) * 100).toFixed(1) : "0",
                     },
                 },
-                byCategory,
+                byCategory: Object.fromEntries(
+                    summary.scope3Categories.map((c) => [
+                        c.category,
+                        { count: c.activityCount, emissions: c.emissions },
+                    ]),
+                ),
             },
+            actionPlan: summary.actionPlan,
         };
 
         return NextResponse.json(reportData);
     } catch (error) {
-        console.error("Report view error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

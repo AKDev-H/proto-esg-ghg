@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { canManageFactors } from "@/lib/permissions";
 
 export async function GET(
     request: NextRequest,
@@ -51,7 +52,7 @@ export async function PUT(
             );
         }
 
-        if (!["super_admin", "org_admin"].includes(session.user.role)) {
+        if (!canManageFactors(session.user.role)) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
@@ -97,7 +98,7 @@ export async function DELETE(
             );
         }
 
-        if (session.user.role !== "super_admin") {
+        if (!canManageFactors(session.user.role)) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
