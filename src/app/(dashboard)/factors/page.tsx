@@ -12,12 +12,13 @@ interface Props {
 export default async function FactorsPage({ searchParams }: Props) {
     const session = await auth();
     const organizationId = session?.user?.organizationId;
+    const isSuperAdmin = session?.user?.role === "super_admin";
     const params = await searchParams;
     const page = parseInt(params.page || "1");
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const where = organizationId
+    const where = organizationId && !isSuperAdmin
         ? { OR: [{ organizationId }, { organizationId: null }] }
         : {};
 

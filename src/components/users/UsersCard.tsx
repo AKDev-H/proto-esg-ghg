@@ -9,12 +9,13 @@ import type { User } from "@/modules/users/types"
 
 interface UsersCardProps {
     users: User[]
+    currentUserId?: string
     onDelete?: (id: string) => void
 }
 
-export function UsersCard({ users, onDelete }: UsersCardProps) {
+export function UsersCard({ users, currentUserId, onDelete }: UsersCardProps) {
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this user?")) return
+        if (id === currentUserId) return
         try {
             const res = await fetch(`/api/users/${id}`, { method: "DELETE" })
             if (res.ok) onDelete?.(id)
@@ -51,7 +52,13 @@ export function UsersCard({ users, onDelete }: UsersCardProps) {
                             <span className="text-sm text-muted-foreground">
                                 Joined: {new Date(user.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" })}
                             </span>
-                            <Button size="sm" variant="ghost" onClick={() => handleDelete(user.id)}>
+                            <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleDelete(user.id)}
+                                disabled={user.id === currentUserId}
+                                className={user.id === currentUserId ? 'opacity-50 cursor-not-allowed' : ''}
+                            >
                                 <Trash2 className="w-4 h-4" />
                             </Button>
                         </div>

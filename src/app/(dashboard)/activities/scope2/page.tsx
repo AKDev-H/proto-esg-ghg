@@ -40,21 +40,31 @@ export default async function Scope2Page({ searchParams }: Props) {
 
     const session = await auth()
     const organizationId = session?.user?.organizationId
+    const isSuperAdmin = session?.user?.role === "super_admin"
 
     const [factors, activities, totalCount] = await Promise.all([
         prisma.emissionFactor.findMany({
-            where: { category: "scope2", ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {}) },
+            where: { 
+                category: "scope2", 
+                ...(organizationId && !isSuperAdmin ? { OR: [{ organizationId }, { organizationId: null }] } : {})
+            },
             orderBy: { activityType: "asc" },
         }),
         prisma.activityData.findMany({
-            where: { scope: "scope2", ...(organizationId ? { organizationId } : {}) },
+            where: { 
+                scope: "scope2", 
+                ...(organizationId && !isSuperAdmin ? { organizationId } : {})
+            },
             include: { scope2Electricity: true },
             orderBy: { createdAt: "desc" },
             take: PAGE_SIZE,
             skip,
         }),
         prisma.activityData.count({
-            where: { scope: "scope2", ...(organizationId ? { organizationId } : {}) },
+            where: { 
+                scope: "scope2", 
+                ...(organizationId && !isSuperAdmin ? { organizationId } : {})
+            },
         }),
     ])
 
@@ -90,6 +100,7 @@ export default async function Scope2Page({ searchParams }: Props) {
         <div className="space-y-6">
             <h1 className="text-3xl font-bold">Scope 2: Indirect Energy Emissions</h1>
 
+            {!isSuperAdmin && (
             <Card>
                 <CardHeader>
                     <CardTitle>Add Electricity Consumption</CardTitle>
@@ -98,6 +109,7 @@ export default async function Scope2Page({ searchParams }: Props) {
                     <Scope2Form factors={formattedFactors} />
                 </CardContent>
             </Card>
+            )}
 
             <Card>
                 <CardHeader>

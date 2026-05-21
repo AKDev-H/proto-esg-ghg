@@ -12,6 +12,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const yearsParam = searchParams.get('years')
     const organizationId = session.user.organizationId
+    const isSuperAdmin = session.user.role === "super_admin"
+
+    if (isSuperAdmin) {
+      return NextResponse.json([])
+    }
 
     if (!yearsParam) {
       return NextResponse.json({ error: 'Years parameter required' }, { status: 400 })

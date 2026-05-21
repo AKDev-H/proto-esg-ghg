@@ -18,8 +18,9 @@ export default async function ReportsPage({ searchParams }: Props) {
 
     const session = await auth()
     const organizationId = session?.user?.organizationId
+    const isSuperAdmin = session?.user?.role === "super_admin"
 
-    const where = organizationId ? { organizationId } : {}
+    const where = organizationId && !isSuperAdmin ? { organizationId } : {}
 
     const [reports, total] = await Promise.all([
         prisma.report.findMany({

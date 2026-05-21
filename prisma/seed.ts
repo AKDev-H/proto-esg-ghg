@@ -44,7 +44,7 @@ async function main() {
       name: "Super Admin",
       passwordHash,
       role: "super_admin",
-      organizationId: org1.id,
+      organizationId: null,
     },
   });
   console.log("Created super admin user:", superAdmin.email);

@@ -44,10 +44,14 @@ export default async function Scope3Page({ searchParams }: Props) {
 
     const session = await auth()
     const organizationId = session?.user?.organizationId
+    const isSuperAdmin = session?.user?.role === "super_admin"
 
     const [activities, totalCount, factors] = await Promise.all([
         prisma.activityData.findMany({
-            where: { scope: "scope3", ...(organizationId ? { organizationId } : {}) },
+            where: { 
+                scope: "scope3", 
+                ...(organizationId && !isSuperAdmin ? { organizationId } : {})
+            },
             include: {
                 scope3PurchasedGoods: true,
                 scope3CapitalGoods: true,
@@ -67,10 +71,16 @@ export default async function Scope3Page({ searchParams }: Props) {
             skip,
         }),
         prisma.activityData.count({
-            where: { scope: "scope3", ...(organizationId ? { organizationId } : {}) },
+            where: { 
+                scope: "scope3", 
+                ...(organizationId && !isSuperAdmin ? { organizationId } : {})
+            },
         }),
         prisma.emissionFactor.findMany({
-            where: { category: "scope3", ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {}) },
+            where: { 
+                category: "scope3", 
+                ...(organizationId && !isSuperAdmin ? { OR: [{ organizationId }, { organizationId: null }] } : {})
+            },
             orderBy: { activityType: "asc" },
         }),
     ])
@@ -106,7 +116,7 @@ export default async function Scope3Page({ searchParams }: Props) {
         <div className="space-y-6">
             <h1 className="text-2xl sm:text-3xl font-bold">Scope 3: Value Chain Emissions</h1>
 
-            <Scope3Forms factors={formattedFactors} />
+            {!isSuperAdmin && <Scope3Forms factors={formattedFactors} />}
 
             <Card>
                 <CardHeader>

@@ -1,6 +1,8 @@
 import { DashboardOverview } from "@/modules/dashboard/components"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
 import {
     Truck,
     Zap,
@@ -10,10 +12,112 @@ import {
     Settings,
     Scale,
     Plus,
+    Building2,
+    Users,
 } from "lucide-react"
 import Link from "next/link"
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+    const session = await auth()
+    const isSuperAdmin = session?.user?.role === "super_admin"
+
+    let stats = null
+    if (isSuperAdmin) {
+        const [orgCount, userCount, reportCount] = await Promise.all([
+            prisma.organization.count(),
+            prisma.user.count({ where: { organizationId: { not: null } } }),
+            prisma.report.count(),
+        ])
+        stats = { orgCount, userCount, reportCount }
+    }
+
+    if (isSuperAdmin) {
+        return (
+            <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <h1 className="text-2xl sm:text-3xl font-bold">Super Admin Dashboard</h1>
+                    <Button asChild className="w-full sm:w-auto">
+                        <Link href="/superadmin/organizations">
+                            <Building2 className="w-4 h-4 mr-2" />
+                            Manage Organizations
+                        </Link>
+                    </Button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                    <Card className="overflow-hidden">
+                        <CardHeader className="bg-primary/5 pb-3">
+                            <CardTitle className="text-base md:text-lg flex items-center gap-2">
+                                <Building2 className="w-5 h-5 text-primary" />
+                                Organizations
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-4">
+                            <div className="text-4xl font-bold">{stats?.orgCount ?? 0}</div>
+                            <p className="text-sm text-muted-foreground mt-1">Total organizations</p>
+                            <Link href="/superadmin/organizations" className="mt-4 block">
+                                <Button variant="outline" className="w-full">
+                                    View All
+                                </Button>
+                            </Link>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="overflow-hidden">
+                        <CardHeader className="bg-primary/5 pb-3">
+                            <CardTitle className="text-base md:text-lg flex items-center gap-2">
+                                <Users className="w-5 h-5 text-primary" />
+                                Users
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-4">
+                            <div className="text-4xl font-bold">{stats?.userCount ?? 0}</div>
+                            <p className="text-sm text-muted-foreground mt-1">Total users across orgs</p>
+                            <Link href="/superadmin/users" className="mt-4 block">
+                                <Button variant="outline" className="w-full">
+                                    View All
+                                </Button>
+                            </Link>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="overflow-hidden sm:col-span-2 lg:col-span-1">
+                        <CardHeader className="bg-primary/5 pb-3">
+                            <CardTitle className="text-base md:text-lg flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-primary" />
+                                Reports
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-4">
+                            <div className="text-4xl font-bold">{stats?.reportCount ?? 0}</div>
+                            <p className="text-sm text-muted-foreground mt-1">Total ESG reports generated</p>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Quick Links</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Link href="/superadmin/organizations">
+                            <Button variant="outline" className="w-full justify-start">
+                                <Building2 className="w-4 h-4 mr-2" />
+                                Organizations Management
+                            </Button>
+                        </Link>
+                        <Link href="/superadmin/users">
+                            <Button variant="outline" className="w-full justify-start">
+                                <Users className="w-4 h-4 mr-2" />
+                                Users Management
+                            </Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+            </div>
+        )
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

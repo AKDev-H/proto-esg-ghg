@@ -30,7 +30,7 @@ export default async function UserManagementPage() {
                 <UserForm />
             </div>
 
-            <UsersTable initialUsers={formattedUsers} />
+            <UsersTable initialUsers={formattedUsers} currentUserId={session?.user?.id} />
         </div>
     )
 }

@@ -52,21 +52,21 @@ export default function DashboardLayout({
 }) {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
-    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+    const [userRole, setUserRole] = useState<string | null>(null);
 
     useEffect(() => {
-        async function checkSuperAdmin() {
+        async function checkUser() {
             try {
                 const res = await fetch("/api/auth/me");
                 if (res.ok) {
                     const data = await res.json();
-                    setIsSuperAdmin(data.user?.role === "super_admin");
+                    setUserRole(data.user?.role);
                 }
             } catch {
                 // ignore
             }
         }
-        checkSuperAdmin();
+        checkUser();
     }, []);
 
     return (
@@ -87,7 +87,7 @@ export default function DashboardLayout({
                         </Link>
 
                         <nav className="hidden lg:flex items-center gap-1">
-                            {navigation.map((item) => {
+                            {userRole !== "super_admin" && navigation.map((item) => {
                                 const Icon = item.icon;
                                 const isActive =
                                     pathname === item.href ||
@@ -110,7 +110,7 @@ export default function DashboardLayout({
                                     </Link>
                                 );
                             })}
-                            {/* {isSuperAdmin && (
+                            {userRole === "super_admin" && (
                                 <Link href="/superadmin/organizations">
                                     <Button
                                         variant={
@@ -130,7 +130,7 @@ export default function DashboardLayout({
                                         Super Admin
                                     </Button>
                                 </Link>
-                            )} */}
+                            )}
                         </nav>
                     </div>
 
@@ -143,7 +143,7 @@ export default function DashboardLayout({
                             </SheetTrigger>
                             <SheetContent side="left" className="w-[280px]">
                                 <div className="flex flex-col gap-4 mt-8">
-                                    {navigation.map((item) => {
+                                    {userRole !== "super_admin" && navigation.map((item) => {
                                         const Icon = item.icon;
                                         const isActive =
                                             pathname === item.href ||
@@ -172,57 +172,58 @@ export default function DashboardLayout({
                                             </Link>
                                         );
                                     })}
-                                    {/* {isSuperAdmin && (
+                                    {userRole === "super_admin" && (
+                                        <Link
+                                            href="/superadmin/organizations"
+                                            onClick={() =>
+                                                setMobileOpen(false)
+                                            }
+                                        >
+                                            <div
+                                                className={cn(
+                                                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                                                    pathname.startsWith(
+                                                        "/superadmin",
+                                                    )
+                                                        ? "bg-primary/10 text-primary"
+                                                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                                                )}
+                                            >
+                                                <Shield className="w-5 h-5" />
+                                                Super Admin
+                                            </div>
+                                        </Link>
+                                    )}
+                                    {userRole !== "super_admin" && (
                                         <>
                                             <div className="border-t my-2" />
-                                            <Link
-                                                href="/superadmin/organizations"
-                                                onClick={() =>
-                                                    setMobileOpen(false)
-                                                }
-                                            >
-                                                <div
-                                                    className={cn(
-                                                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                                                        pathname.startsWith(
-                                                            "/superadmin",
-                                                        )
-                                                            ? "bg-primary/10 text-primary"
-                                                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                                                    )}
-                                                >
-                                                    <Shield className="w-5 h-5" />
-                                                    Super Admin
-                                                </div>
-                                            </Link>
+                                            {settingsNav.map((item) => {
+                                                const Icon = item.icon;
+                                                const isActive = pathname === item.href;
+                                                return (
+                                                    <Link
+                                                        key={item.name}
+                                                        href={item.href}
+                                                        onClick={() =>
+                                                            setMobileOpen(false)
+                                                        }
+                                                    >
+                                                        <div
+                                                            className={cn(
+                                                                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                                                                isActive
+                                                                    ? "bg-primary/10 text-primary"
+                                                                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                                                            )}
+                                                        >
+                                                            <Icon className="w-5 h-5" />
+                                                            {item.name}
+                                                        </div>
+                                                    </Link>
+                                                );
+                                            })}
                                         </>
-                                    )} */}
-                                    <div className="border-t my-2" />
-                                    {settingsNav.map((item) => {
-                                        const Icon = item.icon;
-                                        const isActive = pathname === item.href;
-                                        return (
-                                            <Link
-                                                key={item.name}
-                                                href={item.href}
-                                                onClick={() =>
-                                                    setMobileOpen(false)
-                                                }
-                                            >
-                                                <div
-                                                    className={cn(
-                                                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                                                        isActive
-                                                            ? "bg-primary/10 text-primary"
-                                                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                                                    )}
-                                                >
-                                                    <Icon className="w-5 h-5" />
-                                                    {item.name}
-                                                </div>
-                                            </Link>
-                                        );
-                                    })}
+                                    )}
                                     <div className="border-t my-2" />
                                     <button
                                         onClick={() =>
@@ -237,46 +238,48 @@ export default function DashboardLayout({
                             </SheetContent>
                         </Sheet>
 
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                    <Settings className="w-4 h-4 mr-2" />
-                                    <span className="hidden md:inline">
-                                        Settings
-                                    </span>
-                                    <ChevronDown className="w-4 h-4 ml-1" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                {settingsNav.map((item) => {
-                                    const Icon = item.icon;
-                                    return (
-                                        <DropdownMenuItem
-                                            key={item.name}
-                                            asChild
-                                        >
-                                            <Link
-                                                href={item.href}
-                                                className="gap-2"
+                        {userRole !== "super_admin" && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm">
+                                        <Settings className="w-4 h-4 mr-2" />
+                                        <span className="hidden md:inline">
+                                            Settings
+                                        </span>
+                                        <ChevronDown className="w-4 h-4 ml-1" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {settingsNav.map((item) => {
+                                        const Icon = item.icon;
+                                        return (
+                                            <DropdownMenuItem
+                                                key={item.name}
+                                                asChild
                                             >
-                                                <Icon className="w-4 h-4" />
-                                                {item.name}
-                                            </Link>
-                                        </DropdownMenuItem>
-                                    );
-                                })}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                    onClick={() =>
-                                        signOut({ callbackUrl: "/login" })
-                                    }
-                                    className="gap-2"
-                                >
-                                    <LogOut className="w-4 h-4" />
-                                    Sign out
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                                                <Link
+                                                    href={item.href}
+                                                    className="gap-2"
+                                                >
+                                                    <Icon className="w-4 h-4" />
+                                                    {item.name}
+                                                </Link>
+                                            </DropdownMenuItem>
+                                        );
+                                    })}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        onClick={() =>
+                                            signOut({ callbackUrl: "/login" })
+                                        }
+                                        className="gap-2"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                        Sign out
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
                     </div>
                 </div>
             </header>

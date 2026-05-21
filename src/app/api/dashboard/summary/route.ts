@@ -15,6 +15,11 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const year = searchParams.get("year");
         const organizationId = session.user.organizationId;
+        const isSuperAdmin = session.user.role === "super_admin";
+
+        if (isSuperAdmin) {
+            return NextResponse.json({ total: 0, byScope: {}, byCategory: {} });
+        }
 
         if (!year) {
             return NextResponse.json(

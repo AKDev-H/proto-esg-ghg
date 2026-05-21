@@ -72,12 +72,16 @@ export async function PUT(
         const { id } = await params;
         const body = await request.json();
 
+        const updateData: Record<string, unknown> = {};
+        if (body.name) updateData.name = body.name;
+        if (body.country) updateData.country = body.country;
+        if (body.currency) updateData.currency = body.currency;
+        if (body.industryType) updateData.industryType = body.industryType;
+        if (body.settings) updateData.settings = body.settings;
+
         const organization = await prisma.organization.update({
             where: { id },
-            data: {
-                name: body.name,
-                settings: body.settings,
-            },
+            data: updateData,
         });
 
         await prisma.auditLog.create({

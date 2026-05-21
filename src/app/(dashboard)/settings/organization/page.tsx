@@ -59,6 +59,7 @@ export default async function OrganizationSettingsPage() {
                 settings: settings ?? undefined,
                 users,
             }}
+            userRole={session?.user?.role}
         />
     )
 }
