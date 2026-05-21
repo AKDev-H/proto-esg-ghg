@@ -19,6 +19,16 @@ export function formatKgCO2(kg: number): string {
     return `${formatNumber(kg)} kgCO2e`;
 }
 
+export function getSafeCallbackUrl(
+    url: string | null | undefined,
+    fallback = "/dashboard",
+): string {
+    if (!url || !url.startsWith("/") || url.startsWith("//")) {
+        return fallback;
+    }
+    return url;
+}
+
 export function slugify(text: string): string {
     return text
         .toLowerCase()

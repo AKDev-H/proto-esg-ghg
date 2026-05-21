@@ -13,8 +13,7 @@ export default auth((req) => {
         pathname.startsWith("/reports") ||
         pathname.startsWith("/settings") ||
         pathname.startsWith("/audit") ||
-        pathname.startsWith("/superadmin") ||
-        pathname.startsWith("/onboarding");
+        pathname.startsWith("/superadmin");
 
     if (isProtected && !isLoggedIn) {
         const loginUrl = new URL("/login", req.nextUrl.origin);
@@ -38,7 +37,6 @@ export const config = {
         "/settings/:path*",
         "/audit/:path*",
         "/superadmin/:path*",
-        "/onboarding",
         "/login",
     ],
 };
