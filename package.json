@@ -10,7 +10,8 @@
         "db:generate": "prisma generate",
         "db:push": "prisma db push",
         "db:migrate": "prisma migrate dev",
-        "db:seed": "tsx prisma/seed.ts"
+        "db:seed": "tsx prisma/seed.ts",
+        "deploy": "npx prisma migrate deploy && npx prisma generate && npm run build"
     },
     "dependencies": {
         "@hookform/resolvers": "^3.9.1",
@@ -44,6 +45,7 @@
         "@types/node": "^20",
         "@types/react": "^19",
         "@types/react-dom": "^19",
+        "babel-plugin-react-compiler": "^1.0.0",
         "eslint": "^9",
         "eslint-config-next": "16.2.6",
         "prisma": "^6.4.1",
