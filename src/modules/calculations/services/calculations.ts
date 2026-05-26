@@ -1,4 +1,10 @@
 import { CONVERSION_FACTORS, STANDARD_UNITS } from "@/lib/constants";
+import {
+    EQUIPMENT_TYPE_TO_FACTOR,
+    FUEL_ENERGY_TO_FACTOR,
+    TRANSPORT_MODE_TO_FACTOR,
+    WASTE_TYPE_DISPOSAL_TO_FACTOR,
+} from "@/lib/matc-emission-factors";
 
 type WeightUnit = keyof typeof CONVERSION_FACTORS.weight;
 type DistanceUnit = keyof typeof CONVERSION_FACTORS.distance;
@@ -184,6 +190,79 @@ export function calculateEmissions(
         emissionFactor,
         calculatedEmissions: roundToPrecision(calculatedEmissions, 3),
     };
+}
+
+export function resolveScope3FactorActivityType(
+    scope3Category: string,
+    activityType: string,
+    details?: Record<string, unknown>,
+): string {
+    const nested = extractScope3DetailFields(details);
+    if (!nested) return activityType;
+
+    switch (scope3Category) {
+        case "cat1_purchased_goods": {
+            const materialType = String(nested.materialType || activityType);
+            if (materialType === "surface_treatment_passivation") {
+                return "chemicals_passivation";
+            }
+            return materialType;
+        }
+        case "cat2_capital_goods": {
+            const equipmentType = String(nested.equipmentType || "");
+            return EQUIPMENT_TYPE_TO_FACTOR[equipmentType] || "tooling_machinery";
+        }
+        case "cat3_fuel_energy": {
+            const fuelType = String(nested.fuelType || "");
+            const activityDescription = String(nested.activityDescription || "");
+            if (fuelType === "electricity") {
+                return (
+                    FUEL_ENERGY_TO_FACTOR[`${fuelType}:${activityDescription}`] ||
+                    "clean_room_electricity_upstream"
+                );
+            }
+            return activityType;
+        }
+        case "cat4_upstream_transport":
+        case "cat9_downstream_transport": {
+            const mode = String(nested.transportMode || nested.mode || "");
+            return TRANSPORT_MODE_TO_FACTOR[mode] || activityType;
+        }
+        case "cat5_waste": {
+            const wasteType = String(nested.wasteType || "");
+            const disposalMethod = String(nested.disposalMethod || "");
+            return (
+                WASTE_TYPE_DISPOSAL_TO_FACTOR[`${wasteType}:${disposalMethod}`] ||
+                activityType
+            );
+        }
+        case "cat10_product_processing": {
+            const processingType = String(nested.processingType || "");
+            if (processingType === "refining" || processingType === "fabrication") {
+                return "surface_treatment_passivation";
+            }
+            return activityType;
+        }
+        default:
+            return activityType;
+    }
+}
+
+function extractScope3DetailFields(
+    details?: Record<string, unknown>,
+): Record<string, unknown> | null {
+    if (!details) return null;
+
+    for (const value of Object.values(details)) {
+        if (value && typeof value === "object" && "create" in (value as object)) {
+            return (value as { create: Record<string, unknown> }).create;
+        }
+        if (value && typeof value === "object") {
+            return value as Record<string, unknown>;
+        }
+    }
+
+    return null;
 }
 
 export function deriveScope3ActivityQuantity(

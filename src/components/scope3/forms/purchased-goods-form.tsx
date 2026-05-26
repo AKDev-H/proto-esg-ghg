@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MATC_MATERIAL_TYPES } from "@/lib/constants";
 import { purchasedGoodsSchema } from "@/modules/scope3/schemas";
 import { Scope3ActivityFormShell } from "@/modules/scope3/components/scope3-activity-form-shell";
 import { useCreateActivityForm } from "@/modules/activities/hooks/use-create-activity-form";
@@ -22,7 +23,7 @@ export function PurchasedGoodsForm({ factors, onSuccess }: PurchasedGoodsFormPro
 
     const form = useForm<PurchasedGoodsFormData>({
         resolver: zodResolver(purchasedGoodsSchema),
-        defaultValues: { unit: "kg" },
+        defaultValues: { materialType: "stainless_steel", unit: "kg" },
     });
 
     const onSubmit = async (data: PurchasedGoodsFormData) => {
@@ -30,7 +31,7 @@ export function PurchasedGoodsForm({ factors, onSuccess }: PurchasedGoodsFormPro
             {
                 scope: "scope3",
                 scope3Category: "cat1_purchased_goods",
-                activityType: "purchased_goods",
+                activityType: data.materialType,
                 inputValue: data.quantity,
                 inputUnit: data.unit,
             },
@@ -67,7 +68,19 @@ export function PurchasedGoodsForm({ factors, onSuccess }: PurchasedGoodsFormPro
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label>Material Type</Label>
-                    <Input {...form.register("materialType")} placeholder="e.g., Steel, Plastic" />
+                    <Select
+                        value={form.watch("materialType")}
+                        onValueChange={(v) => form.setValue("materialType", v)}
+                    >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {MATC_MATERIAL_TYPES.map((m) => (
+                                <SelectItem key={m.value} value={m.value}>
+                                    {m.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
                 <div className="space-y-2">
                     <Label>Supplier</Label>

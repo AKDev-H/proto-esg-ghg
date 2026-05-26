@@ -17,16 +17,6 @@ declare module "next-auth" {
     }
 }
 
-declare module "@auth/core/jwt" {
-    interface JWT {
-        id: string;
-        email: string;
-        name: string;
-        role: UserRole;
-        organizationId: string | null;
-    }
-}
-
 export const { handlers, signIn, signOut, auth } = NextAuth({
     providers: [
         Credentials({
@@ -76,19 +66,54 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 token.name = user.name;
                 token.role = user.role;
                 token.organizationId = user.organizationId;
+                return token;
             }
+
+            if (token.id) {
+                const dbUser = await prisma.user.findUnique({
+                    where: { id: token.id as string },
+                    select: {
+                        email: true,
+                        name: true,
+                        role: true,
+                        organizationId: true,
+                    },
+                });
+
+                if (dbUser) {
+                    token.email = dbUser.email;
+                    token.name = dbUser.name;
+                    token.role = dbUser.role;
+                    token.organizationId = dbUser.organizationId;
+                }
+            }
+
             return token;
         },
         async session({ session, token }) {
+            const dbUser = token.id
+                ? await prisma.user.findUnique({
+                      where: { id: token.id as string },
+                      select: {
+                          email: true,
+                          name: true,
+                          role: true,
+                          organizationId: true,
+                      },
+                  })
+                : null;
+
             const newUser: SessionUser = {
                 id: token.id as string,
-                email: token.email as string,
-                name: token.name as string,
-                role: token.role as UserRole,
-                organizationId: token.organizationId as string | null,
-            }
-            Object.assign(session.user, newUser)
-            return session
+                email: (dbUser?.email ?? token.email) as string,
+                name: (dbUser?.name ?? token.name) as string,
+                role: (dbUser?.role ?? token.role) as UserRole,
+                organizationId: dbUser
+                    ? dbUser.organizationId
+                    : (token.organizationId as string | null),
+            };
+            Object.assign(session.user, newUser);
+            return session;
         },
     },
     pages: {

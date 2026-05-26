@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MATC_FUEL_ENERGY_TYPES } from "@/lib/constants";
 import { fuelEnergySchema } from "@/modules/scope3/schemas";
 import { Scope3ActivityFormShell } from "@/modules/scope3/components/scope3-activity-form-shell";
 import { useCreateActivityForm } from "@/modules/activities/hooks/use-create-activity-form";
@@ -22,7 +23,11 @@ export function FuelEnergyForm({ factors, onSuccess }: FuelEnergyFormProps) {
 
     const form = useForm<FuelEnergyFormData>({
         resolver: zodResolver(fuelEnergySchema),
-        defaultValues: { fuelType: "natural_gas", activityDescription: "extraction" },
+        defaultValues: {
+            fuelType: "electricity",
+            activityDescription: "transmission",
+            unit: "kWh",
+        },
     });
 
     const onSubmit = async (data: FuelEnergyFormData) => {
@@ -30,7 +35,7 @@ export function FuelEnergyForm({ factors, onSuccess }: FuelEnergyFormProps) {
             {
                 scope: "scope3",
                 scope3Category: "cat3_fuel_energy",
-                activityType: "fuel_energy",
+                activityType: "clean_room_electricity_upstream",
                 inputValue: data.quantity,
                 inputUnit: data.unit,
             },
@@ -69,10 +74,11 @@ export function FuelEnergyForm({ factors, onSuccess }: FuelEnergyFormProps) {
                     <Select value={form.watch("fuelType")} onValueChange={(v) => form.setValue("fuelType", v as FuelType)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="natural_gas">Natural Gas</SelectItem>
-                            <SelectItem value="diesel">Diesel</SelectItem>
-                            <SelectItem value="coal">Coal</SelectItem>
-                            <SelectItem value="electricity">Electricity</SelectItem>
+                            {MATC_FUEL_ENERGY_TYPES.map((f) => (
+                                <SelectItem key={f.value} value={f.value}>
+                                    {f.label}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -95,7 +101,15 @@ export function FuelEnergyForm({ factors, onSuccess }: FuelEnergyFormProps) {
                 </div>
                 <div className="space-y-2">
                     <Label>Unit</Label>
-                    <Input {...form.register("unit")} placeholder="e.g., liter, kWh" />
+                    <Select value={form.watch("unit")} onValueChange={(v) => form.setValue("unit", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="kWh">kWh</SelectItem>
+                            <SelectItem value="MWh">MWh</SelectItem>
+                            <SelectItem value="liter">liter</SelectItem>
+                            <SelectItem value="m3">m3</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
         </Scope3ActivityFormShell>

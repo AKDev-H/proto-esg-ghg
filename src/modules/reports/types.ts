@@ -2,12 +2,14 @@
 
 export type ReportType = 'esg_summary' | 'detailed'
 export type ReportStatus = 'pending' | 'processing' | 'completed' | 'failed'
+export type ReportDataSource = 'dashboard' | 'excel'
 
 export interface Report {
     id: string
     organizationId: string
     reportingYear: number
     reportType: ReportType
+    dataSource?: ReportDataSource
     filePath?: string
     status: ReportStatus
     generatedAt?: string
@@ -55,4 +57,10 @@ export interface ReportSummary {
     scope2Emissions: number
     scope3Emissions: number
     activityCount: number
+}
+
+export function parseReportDataSource(
+    value: string | null | undefined,
+): ReportDataSource {
+    return value === "excel" ? "excel" : "dashboard"
 }

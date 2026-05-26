@@ -280,6 +280,38 @@ const COLORS = {
     high: "#dc2626",
 };
 
+const TOTAL_PAGES = 6;
+
+const PDF = {
+    co2: "CO2e",
+    tco2: "tCO2e",
+    bullet: "- ",
+    ok: "OK: ",
+    warn: "Note: ",
+    insightTitle: "Management Insight",
+    nextStep: "Next Step:",
+} as const;
+
+function ReportFooter({
+    data,
+    page,
+}: {
+    data: ESGSummaryData;
+    page: number;
+}) {
+    return (
+        <View style={styles.footer}>
+            <Text style={styles.footerText}>
+                Generated: {new Date(data.generatedAt).toLocaleDateString()}{" "}
+                | {data.organization.name}
+            </Text>
+            <Text style={styles.pageNumber}>
+                Page {page} of {TOTAL_PAGES}
+            </Text>
+        </View>
+    );
+}
+
 function getEmissionStatus(value: number, total: number, country: Country) {
     const percentage = total > 0 ? (value / total) * 100 : 0;
     if (country === "US") {
@@ -355,7 +387,9 @@ function Page1({ data }: { data: ESGSummaryData }) {
                     <Text style={styles.heroValue}>
                         {formatNumber(total / 1000)}
                     </Text>
-                    <Text style={styles.heroUnit}>tonnes CO₂e (tCO₂e)</Text>
+                    <Text style={styles.heroUnit}>
+                        tonnes {PDF.co2} ({PDF.tco2})
+                    </Text>
                     <View
                         style={{
                             flexDirection: "row",
@@ -364,7 +398,7 @@ function Page1({ data }: { data: ESGSummaryData }) {
                         }}
                     >
                         <Text style={{ fontSize: 10, color: "#a7f3d0" }}>
-                            ✓ Base year emission baseline
+                            {PDF.ok}Base year emission baseline
                         </Text>
                     </View>
                 </View>
@@ -386,7 +420,7 @@ function Page1({ data }: { data: ESGSummaryData }) {
                             {formatNumber(data.scope1Emissions / 1000)}
                         </Text>
                         <Text style={[styles.statUnit, { color: "#f87171" }]}>
-                            tCO₂e ( {data.scope1Percentage.toFixed(1)}% )
+                            {PDF.tco2} ( {data.scope1Percentage.toFixed(1)}% )
                         </Text>
                         <View style={styles.progressBar}>
                             <View
@@ -416,7 +450,7 @@ function Page1({ data }: { data: ESGSummaryData }) {
                             {formatNumber(data.scope2Emissions / 1000)}
                         </Text>
                         <Text style={[styles.statUnit, { color: "#fbbf24" }]}>
-                            tCO₂e ( {data.scope2Percentage.toFixed(1)}% )
+                            {PDF.tco2} ( {data.scope2Percentage.toFixed(1)}% )
                         </Text>
                         <View style={styles.progressBar}>
                             <View
@@ -446,7 +480,7 @@ function Page1({ data }: { data: ESGSummaryData }) {
                             {formatNumber(data.scope3Emissions / 1000)}
                         </Text>
                         <Text style={[styles.statUnit, { color: "#a78bfa" }]}>
-                            tCO₂e ( {data.scope3Percentage.toFixed(1)}% )
+                            {PDF.tco2} ( {data.scope3Percentage.toFixed(1)}% )
                         </Text>
                         <View style={styles.progressBar}>
                             <View
@@ -489,17 +523,15 @@ function Page1({ data }: { data: ESGSummaryData }) {
                                 }}
                             >
                                 {data.activityCount > 30
-                                    ? "✓ Good data coverage"
-                                    : "⚠ Needs more data"}
+                                    ? `${PDF.ok}Good data coverage`
+                                    : `${PDF.warn}Needs more data`}
                             </Text>
                         </View>
                     </View>
                 </View>
 
                 <View style={styles.insightBox}>
-                    <Text style={styles.insightTitle}>
-                        📊 Management Insight
-                    </Text>
+                    <Text style={styles.insightTitle}>{PDF.insightTitle}</Text>
                     <Text style={styles.infoBoxText}>
                         {data.scope3Percentage > 60
                             ? "Your Scope 3 emissions dominate at " +
@@ -534,7 +566,7 @@ function Page1({ data }: { data: ESGSummaryData }) {
                                 { fontSize: 10 },
                             ]}
                         >
-                            Emissions (tCO₂e)
+                            Emissions ({PDF.tco2})
                         </Text>
                         <Text
                             style={[
@@ -603,13 +635,7 @@ function Page1({ data }: { data: ESGSummaryData }) {
                 </View>
             </View>
 
-            <View style={styles.footer}>
-                <Text style={styles.footerText}>
-                    Generated: {new Date(data.generatedAt).toLocaleDateString()}{" "}
-                    | {data.organization.name}
-                </Text>
-                <Text style={styles.pageNumber}>Page 1 of 3</Text>
-            </View>
+            <ReportFooter data={data} page={1} />
         </Page>
     );
 }
@@ -640,7 +666,7 @@ function Page2({ data }: { data: ESGSummaryData }) {
                     ]}
                 >
                     <Text style={[styles.scopeCardTitle, { color: "#991b1b" }]}>
-                        Total: {formatNumber(data.scope1Emissions / 1000)} tCO₂e
+                        Total: {formatNumber(data.scope1Emissions / 1000)} {PDF.tco2}
                         ( {data.scope1Percentage.toFixed(1)}% )
                     </Text>
                     <Text style={[styles.scopeCardDesc, { color: "#7f1d1d" }]}>
@@ -658,8 +684,8 @@ function Page2({ data }: { data: ESGSummaryData }) {
                 >
                     <Text style={styles.infoBoxText}>
                         {data.scope1Percentage >= 50
-                            ? "⚠️ HIGH PRIORITY: Scope 1 is significant. Consider fleet electrification, equipment upgrades to lower-carbon fuels, or preventive maintenance programs."
-                            : "✓ GOOD: Direct emissions are well-controlled. Continue monitoring vehicle maintenance and equipment efficiency."}
+                            ? `${PDF.warn}HIGH PRIORITY: Scope 1 is significant. Consider fleet electrification, equipment upgrades to lower-carbon fuels, or preventive maintenance programs.`
+                            : `${PDF.ok}Direct emissions are well-controlled. Continue monitoring vehicle maintenance and equipment efficiency.`}
                     </Text>
                 </View>
             </View>
@@ -679,7 +705,7 @@ function Page2({ data }: { data: ESGSummaryData }) {
                     ]}
                 >
                     <Text style={[styles.scopeCardTitle, { color: "#92400e" }]}>
-                        Total: {formatNumber(data.scope2Emissions / 1000)} tCO₂e
+                        Total: {formatNumber(data.scope2Emissions / 1000)} {PDF.tco2}
                         ( {data.scope2Percentage.toFixed(1)}% )
                     </Text>
                     <Text style={[styles.scopeCardDesc, { color: "#78350f" }]}>
@@ -699,8 +725,8 @@ function Page2({ data }: { data: ESGSummaryData }) {
                     >
                         <Text style={styles.infoBoxText}>
                             {data.scope2Percentage >= 30
-                                ? "⚠️ Review electricity consumption patterns. Consider renewable energy procurement (solar PPA), energy efficiency upgrades, or grid region optimization."
-                                : "✓ Good progress on energy efficiency. Explore renewable energy options for further reductions."}
+                                ? `${PDF.warn}Review electricity consumption patterns. Consider renewable energy procurement (solar PPA), energy efficiency upgrades, or grid region optimization.`
+                                : `${PDF.ok}Good progress on energy efficiency. Explore renewable energy options for further reductions.`}
                         </Text>
                     </View>
                 )}
@@ -719,7 +745,7 @@ function Page2({ data }: { data: ESGSummaryData }) {
                     ]}
                 >
                     <Text style={[styles.scopeCardTitle, { color: "#5b21b6" }]}>
-                        Total: {formatNumber(data.scope3Emissions / 1000)} tCO₂e
+                        Total: {formatNumber(data.scope3Emissions / 1000)} {PDF.tco2}
                         ( {data.scope3Percentage.toFixed(1)}% )
                     </Text>
                     <Text style={[styles.scopeCardDesc, { color: "#4c1d95" }]}>
@@ -729,12 +755,39 @@ function Page2({ data }: { data: ESGSummaryData }) {
                     </Text>
                 </View>
 
-                <Text
-                    style={[
-                        styles.sectionTitle,
-                        { marginTop: 15, fontSize: 12 },
-                    ]}
+                <View
+                    style={
+                        data.scope3Percentage >= 60
+                            ? styles.warningBox
+                            : styles.successBox
+                    }
                 >
+                    <Text style={styles.infoBoxText}>
+                        {data.scope3Percentage >= 60
+                            ? `${PDF.warn}SCOPE 3 DOMINATES: Focus on supplier engagement, product design for longevity, and logistics optimization. This is typical for manufacturing.`
+                            : `${PDF.ok}Manageable Scope 3 profile. Continue supplier sustainability programs and logistics efficiency initiatives.`}
+                    </Text>
+                </View>
+            </View>
+
+            <ReportFooter data={data} page={2} />
+        </Page>
+    );
+}
+
+function Page3CategoryBreakdown({ data }: { data: ESGSummaryData }) {
+    return (
+        <Page size="A4" style={styles.page}>
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Scope 3 Category Breakdown</Text>
+                <Text style={styles.headerSubtitle}>
+                    {data.organization.name} | Reporting Year{" "}
+                    {data.reportingYear}
+                </Text>
+            </View>
+
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>
                     Category Breakdown (Top 5)
                 </Text>
                 <View style={styles.table}>
@@ -755,7 +808,7 @@ function Page2({ data }: { data: ESGSummaryData }) {
                                 { fontSize: 9 },
                             ]}
                         >
-                            tCO₂e
+                            {PDF.tco2}
                         </Text>
                         <Text
                             style={[
@@ -800,33 +853,23 @@ function Page2({ data }: { data: ESGSummaryData }) {
                     ))}
                 </View>
 
-                <View
-                    style={
-                        data.scope3Percentage >= 60
-                            ? styles.warningBox
-                            : styles.successBox
-                    }
-                >
-                    <Text style={styles.infoBoxText}>
-                        {data.scope3Percentage >= 60
-                            ? "⚠️ SCOPE 3 DOMINATES: Focus on supplier engagement, product design for longevity, and logistics optimization. This is typical for manufacturing."
-                            : "✓ Manageable Scope 3 profile. Continue supplier sustainability programs and logistics efficiency initiatives."}
-                    </Text>
-                </View>
+                {data.scope3Categories.length === 0 && (
+                    <View style={styles.infoBox}>
+                        <Text style={styles.infoBoxText}>
+                            No Scope 3 category data recorded for this reporting
+                            year. Add activities under Scope 3 to populate this
+                            breakdown.
+                        </Text>
+                    </View>
+                )}
             </View>
 
-            <View style={styles.footer}>
-                <Text style={styles.footerText}>
-                    Generated: {new Date(data.generatedAt).toLocaleDateString()}{" "}
-                    | {data.organization.name}
-                </Text>
-                <Text style={styles.pageNumber}>Page 2 of 3</Text>
-            </View>
+            <ReportFooter data={data} page={3} />
         </Page>
     );
 }
 
-function Page3({ data }: { data: ESGSummaryData }) {
+function Page4ManagementInsights({ data }: { data: ESGSummaryData }) {
     const total = data.totalEmissions;
     const scope1Pct = data.scope1Percentage;
     const scope2Pct = data.scope2Percentage;
@@ -936,7 +979,7 @@ function Page3({ data }: { data: ESGSummaryData }) {
                         {formatNumber(total / 1000)}
                     </Text>
                     <Text style={{ fontSize: 12, color: "#a7f3d0" }}>
-                        tonnes CO₂e (tCO₂e)
+                        tonnes {PDF.co2} ({PDF.tco2})
                     </Text>
                     <Text
                         style={{
@@ -945,7 +988,8 @@ function Page3({ data }: { data: ESGSummaryData }) {
                             marginTop: 10,
                         }}
                     >
-                        • {data.activityCount} activities tracked
+                        {PDF.bullet}
+                        {data.activityCount} activities tracked
                     </Text>
                 </View>
             </View>
@@ -966,7 +1010,7 @@ function Page3({ data }: { data: ESGSummaryData }) {
                         {data.activityCount > 0
                             ? (total / data.activityCount).toFixed(0)
                             : "—"}{" "}
-                        kg CO₂e per activity
+                        kg {PDF.co2} per activity
                     </Text>
                 </View>
 
@@ -992,9 +1036,7 @@ function Page3({ data }: { data: ESGSummaryData }) {
                 </View>
 
                 <View style={[styles.insightBox, { marginTop: 15 }]}>
-                    <Text style={styles.insightTitle}>
-                        📊 Management Insight
-                    </Text>
+                    <Text style={styles.insightTitle}>{PDF.insightTitle}</Text>
                     <Text style={styles.infoBoxText}>{mainDriver.message}</Text>
                 </View>
             </View>
@@ -1041,13 +1083,32 @@ function Page3({ data }: { data: ESGSummaryData }) {
                 >
                     <Text style={[styles.infoBoxText, { color: "#166534" }]}>
                         <Text style={{ fontWeight: "bold" }}>
-                            💡 Next Step:
+                            {PDF.nextStep}
                         </Text>{" "}
                         Schedule a sustainability review meeting to prioritize
                         these actions based on your organization&apos;s capacity
                         and budget.
                     </Text>
                 </View>
+            </View>
+
+            <ReportFooter data={data} page={4} />
+        </Page>
+    );
+}
+
+function Page5CountryBenchmark({ data }: { data: ESGSummaryData }) {
+    const scope2Pct = data.scope2Percentage;
+    const scope3Pct = data.scope3Percentage;
+
+    return (
+        <Page size="A4" style={styles.page}>
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Country Benchmark</Text>
+                <Text style={styles.headerSubtitle}>
+                    {data.organization.name} | Reporting Year{" "}
+                    {data.reportingYear}
+                </Text>
             </View>
 
             <View style={styles.section}>
@@ -1119,20 +1180,23 @@ function Page3({ data }: { data: ESGSummaryData }) {
                         </View>
                     </View>
                 </View>
+
+                <View style={[styles.infoBox, { marginTop: 15 }]}>
+                    <Text style={styles.infoBoxText}>
+                        Benchmarks compare your scope mix against typical
+                        manufacturing profiles in each region. Scope 3 share is
+                        evaluated for US (EPA) operations; Scope 2 share for
+                        Malaysia grid operations.
+                    </Text>
+                </View>
             </View>
 
-            <View style={styles.footer}>
-                <Text style={styles.footerText}>
-                    Generated: {new Date(data.generatedAt).toLocaleDateString()}{" "}
-                    | {data.organization.name}
-                </Text>
-                <Text style={styles.pageNumber}>Page 3 of 4</Text>
-            </View>
+            <ReportFooter data={data} page={5} />
         </Page>
     );
 }
 
-function Page4({ data }: { data: ESGSummaryData }) {
+function Page6ActionPlan({ data }: { data: ESGSummaryData }) {
     const { actionPlan } = data;
     const phaseColors = ["#2563eb", "#7c3aed", "#059669"];
 
@@ -1164,7 +1228,8 @@ function Page4({ data }: { data: ESGSummaryData }) {
                         </Text>
                         {actionPlan.materialFocusAreas.map((area) => (
                             <Text key={area} style={styles.recommendationText}>
-                                • {area}
+                                {PDF.bullet}
+                                {area}
                             </Text>
                         ))}
                     </View>
@@ -1184,7 +1249,7 @@ function Page4({ data }: { data: ESGSummaryData }) {
                                 ? (data.totalEmissions / data.activityCount).toFixed(0)
                                 : "—"}
                         </Text>
-                        <Text style={styles.kpiLabel}>kg CO₂e / Activity</Text>
+                        <Text style={styles.kpiLabel}>kg {PDF.co2} / Activity</Text>
                     </View>
                     <View style={styles.kpiBox}>
                         <Text style={styles.kpiValue}>{data.organization.country}</Text>
@@ -1217,7 +1282,8 @@ function Page4({ data }: { data: ESGSummaryData }) {
                         </Text>
                         {phase.actions.map((action) => (
                             <Text key={action} style={styles.recommendationText}>
-                                • {action}
+                                {PDF.bullet}
+                                {action}
                             </Text>
                         ))}
                     </View>
@@ -1231,19 +1297,28 @@ function Page4({ data }: { data: ESGSummaryData }) {
                         Scope 1 — Direct emissions
                     </Text>
                     {actionPlan.scopeActions.scope1.map((action) => (
-                        <Text key={action} style={styles.recommendationText}>• {action}</Text>
+                        <Text key={action} style={styles.recommendationText}>
+                            {PDF.bullet}
+                            {action}
+                        </Text>
                     ))}
                     <Text style={{ fontSize: 9, fontWeight: "bold", marginTop: 8, marginBottom: 4, color: COLORS.scope2 }}>
                         Scope 2 — Purchased energy
                     </Text>
                     {actionPlan.scopeActions.scope2.map((action) => (
-                        <Text key={action} style={styles.recommendationText}>• {action}</Text>
+                        <Text key={action} style={styles.recommendationText}>
+                            {PDF.bullet}
+                            {action}
+                        </Text>
                     ))}
                     <Text style={{ fontSize: 9, fontWeight: "bold", marginTop: 8, marginBottom: 4, color: COLORS.scope3 }}>
                         Scope 3 — Value chain
                     </Text>
                     {actionPlan.scopeActions.scope3.map((action) => (
-                        <Text key={action} style={styles.recommendationText}>• {action}</Text>
+                        <Text key={action} style={styles.recommendationText}>
+                            {PDF.bullet}
+                            {action}
+                        </Text>
                     ))}
                 </View>
             </View>
@@ -1341,12 +1416,7 @@ function Page4({ data }: { data: ESGSummaryData }) {
                 </View>
             </View>
 
-            <View style={styles.footer}>
-                <Text style={styles.footerText}>
-                    {data.organization.name} | ESG Carbon Accounting Platform
-                </Text>
-                <Text style={styles.pageNumber}>Page 4 of 4</Text>
-            </View>
+            <ReportFooter data={data} page={6} />
         </Page>
     );
 }
@@ -1356,8 +1426,10 @@ export function ESGSummaryDocument({ data }: { data: ESGSummaryData }) {
         <Document>
             <Page1 data={data} />
             <Page2 data={data} />
-            <Page3 data={data} />
-            <Page4 data={data} />
+            <Page3CategoryBreakdown data={data} />
+            <Page4ManagementInsights data={data} />
+            <Page5CountryBenchmark data={data} />
+            <Page6ActionPlan data={data} />
         </Document>
     );
 }

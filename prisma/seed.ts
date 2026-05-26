@@ -1,17 +1,51 @@
-import {
-    PrismaClient,
-    EmissionScope,
-    Scope3Category,
-    Country,
-} from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import {
+    buildMatcEmissionFactors,
+    MATC_FACTOR_SOURCES,
+    MATC_ORG_FACTOR_SOURCES,
+} from "../src/lib/matc-emission-factors";
+import { ensureTemplateOnDisk } from "../src/modules/reports/excel/template";
 
 const prisma = new PrismaClient();
+
+const matcOrgSettings = {
+    profile: "MATC",
+    factorSources: [...MATC_ORG_FACTOR_SOURCES],
+    priorityActivities: [
+        "stainless_steel",
+        "aluminum",
+        "chemicals_passivation",
+        "clean_room_electricity_upstream",
+        "road_freight",
+        "scrap_metal_recycling",
+        "hazardous_waste",
+        "tooling_machinery",
+    ],
+};
 
 async function main() {
     console.log("Seeding database...");
 
     const passwordHash = await bcrypt.hash("admin123", 12);
+
+    const orgMatc = await prisma.organization.upsert({
+        where: { slug: "matc-precision" },
+        update: {
+            industryType: "metals",
+            settings: matcOrgSettings,
+        },
+        create: {
+            name: "MATC Precision Manufacturing",
+            slug: "matc-precision",
+            country: "US",
+            currency: "USD",
+            reportingYear: 2024,
+            industryType: "metals",
+            settings: matcOrgSettings,
+        },
+    });
+    console.log("Created organization:", orgMatc.name);
 
     const org1 = await prisma.organization.upsert({
         where: { slug: "acme-manufacturing" },
@@ -54,6 +88,19 @@ async function main() {
     });
     console.log("Created super admin user:", superAdmin.email);
 
+    const matcAdmin = await prisma.user.upsert({
+        where: { email: "admin@matc.com" },
+        update: {},
+        create: {
+            email: "admin@matc.com",
+            name: "MATC Admin",
+            passwordHash,
+            role: "org_admin",
+            organizationId: orgMatc.id,
+        },
+    });
+    console.log("Created MATC org admin:", matcAdmin.email);
+
     const orgAdmin = await prisma.user.upsert({
         where: { email: "admin@acme.com" },
         update: {},
@@ -80,420 +127,122 @@ async function main() {
     });
     console.log("Created sustainability manager:", sustainabilityManager.email);
 
-    const reportingYear1 = await prisma.reportingYear.upsert({
-        where: {
-            organizationId_year: {
-                organizationId: org1.id,
-                year: 2024,
+    for (const org of [orgMatc, org1, org2]) {
+        await prisma.reportingYear.upsert({
+            where: {
+                organizationId_year: {
+                    organizationId: org.id,
+                    year: 2024,
+                },
             },
-        },
-        update: {},
-        create: {
-            organizationId: org1.id,
-            year: 2024,
-            status: "draft",
-        },
-    });
-    console.log("Created reporting year:", reportingYear1.year);
-
-    const reportingYear2 = await prisma.reportingYear.upsert({
-        where: {
-            organizationId_year: {
-                organizationId: org2.id,
+            update: {},
+            create: {
+                organizationId: org.id,
                 year: 2024,
+                status: "draft",
             },
-        },
-        update: {},
-        create: {
-            organizationId: org2.id,
-            year: 2024,
-            status: "draft",
-        },
-    });
-    console.log("Created reporting year:", reportingYear2.year);
+        });
+    }
+    console.log("Created reporting years");
 
-    const factorSources = [
-        {
-            name: "EPA",
-            abbreviation: "EPA",
-            description: "US Environmental Protection Agency",
-        },
-        {
-            name: "DEFRA",
-            abbreviation: "DEFRA",
-            description: "UK Department for Environment, Food & Rural Affairs",
-        },
-        {
-            name: "Malaysia Grid",
-            abbreviation: "MY-GRID",
-            description: " Malaysia Grid Emission Factor",
-        },
-    ];
-
-    for (const source of factorSources) {
+    for (const source of MATC_FACTOR_SOURCES) {
         await prisma.factorSource.upsert({
             where: { name: source.name },
-            update: {},
+            update: {
+                abbreviation: source.abbreviation,
+                description: source.description,
+                url: source.url,
+            },
             create: source,
         });
     }
     console.log("Created factor sources");
 
-    const emissionFactors: {
-        category: EmissionScope;
-        scope3Category?: Scope3Category;
-        activityType: string;
-        activityUnit: string;
-        factorValue: number;
-        source: string;
-        country: Country;
-        validFrom: Date;
-    }[] = [
-        {
-            category: "scope1",
-            activityType: "gasoline",
-            activityUnit: "liter",
-            factorValue: 2.31,
-            source: "EPA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope1",
-            activityType: "diesel",
-            activityUnit: "liter",
-            factorValue: 2.68,
-            source: "EPA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope1",
-            activityType: "natural_gas",
-            activityUnit: "m3",
-            factorValue: 2.0,
-            source: "EPA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope1",
-            activityType: "gasoline",
-            activityUnit: "liter",
-            factorValue: 2.31,
-            source: "DEFRA",
-            country: "MY",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope1",
-            activityType: "diesel",
-            activityUnit: "liter",
-            factorValue: 2.68,
-            source: "DEFRA",
-            country: "MY",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope2",
-            activityType: "electricity",
-            activityUnit: "kWh",
-            factorValue: 0.42,
-            source: "EPA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope2",
-            activityType: "electricity",
-            activityUnit: "kWh",
-            factorValue: 0.58,
-            source: "Malaysia Grid",
-            country: "MY",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat1_purchased_goods",
-            activityType: "steel",
-            activityUnit: "kg",
-            factorValue: 1.85,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat1_purchased_goods",
-            activityType: "plastic",
-            activityUnit: "kg",
-            factorValue: 2.13,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat1_purchased_goods",
-            activityType: "steel",
-            activityUnit: "kg",
-            factorValue: 1.85,
-            source: "DEFRA",
-            country: "MY",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat11_product_use",
-            activityType: "electric_equipment",
-            activityUnit: "kWh",
-            factorValue: 0.5,
-            source: "EPA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat11_product_use",
-            activityType: "electric_equipment",
-            activityUnit: "kWh",
-            factorValue: 0.5,
-            source: "DEFRA",
-            country: "MY",
-            validFrom: new Date("2024-01-01"),
-        },
-        // Cat 2: Capital Goods
-        {
-            category: "scope3",
-            scope3Category: "cat2_capital_goods",
-            activityType: "machinery",
-            activityUnit: "kg",
-            factorValue: 2.5,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat2_capital_goods",
-            activityType: "machinery",
-            activityUnit: "kg",
-            factorValue: 2.5,
-            source: "DEFRA",
-            country: "MY",
-            validFrom: new Date("2024-01-01"),
-        },
-        // Cat 3: Fuel & Energy Related Activities
-        {
-            category: "scope3",
-            scope3Category: "cat3_fuel_energy",
-            activityType: "natural_gas",
-            activityUnit: "kg",
-            factorValue: 2.0,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat3_fuel_energy",
-            activityType: "diesel",
-            activityUnit: "liter",
-            factorValue: 2.68,
-            source: "DEFRA",
-            country: "MY",
-            validFrom: new Date("2024-01-01"),
-        },
-        // Cat 4: Upstream Transportation
-        {
-            category: "scope3",
-            scope3Category: "cat4_upstream_transport",
-            activityType: "road_transport",
-            activityUnit: "ton-km",
-            factorValue: 0.062,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat4_upstream_transport",
-            activityType: "road_transport",
-            activityUnit: "ton-km",
-            factorValue: 0.062,
-            source: "DEFRA",
-            country: "MY",
-            validFrom: new Date("2024-01-01"),
-        },
-        // Cat 5: Waste Generated
-        {
-            category: "scope3",
-            scope3Category: "cat5_waste",
-            activityType: "landfill",
-            activityUnit: "kg",
-            factorValue: 0.58,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat5_waste",
-            activityType: "landfill",
-            activityUnit: "kg",
-            factorValue: 0.58,
-            source: "DEFRA",
-            country: "MY",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat5_waste",
-            activityType: "recycling",
-            activityUnit: "kg",
-            factorValue: -0.21,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        // Cat 6: Business Travel
-        {
-            category: "scope3",
-            scope3Category: "cat6_business_travel",
-            activityType: "flight_short",
-            activityUnit: "km",
-            factorValue: 0.255,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat6_business_travel",
-            activityType: "flight_long",
-            activityUnit: "km",
-            factorValue: 0.195,
-            source: "DEFRA",
-            country: "MY",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat6_business_travel",
-            activityType: "hotel",
-            activityUnit: "night",
-            factorValue: 21.0,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        // Cat 7: Employee Commuting
-        {
-            category: "scope3",
-            scope3Category: "cat7_employee_commuting",
-            activityType: "car",
-            activityUnit: "km",
-            factorValue: 0.171,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat7_employee_commuting",
-            activityType: "car",
-            activityUnit: "km",
-            factorValue: 0.171,
-            source: "DEFRA",
-            country: "MY",
-            validFrom: new Date("2024-01-01"),
-        },
-        // Cat 8: Upstream Leased Assets
-        {
-            category: "scope3",
-            scope3Category: "cat8_upstream_leased",
-            activityType: "equipment",
-            activityUnit: "kg",
-            factorValue: 2.0,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        // Cat 9: Downstream Transportation
-        {
-            category: "scope3",
-            scope3Category: "cat9_downstream_transport",
-            activityType: "road_transport",
-            activityUnit: "ton-km",
-            factorValue: 0.062,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat9_downstream_transport",
-            activityType: "road_transport",
-            activityUnit: "ton-km",
-            factorValue: 0.062,
-            source: "DEFRA",
-            country: "MY",
-            validFrom: new Date("2024-01-01"),
-        },
-        // Cat 10: Processing of Sold Products
-        {
-            category: "scope3",
-            scope3Category: "cat10_product_processing",
-            activityType: "processing",
-            activityUnit: "kg",
-            factorValue: 0.5,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        // Cat 12: End of Life Treatment
-        {
-            category: "scope3",
-            scope3Category: "cat12_end_of_life",
-            activityType: "landfill",
-            activityUnit: "kg",
-            factorValue: 0.58,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-        {
-            category: "scope3",
-            scope3Category: "cat12_end_of_life",
-            activityType: "recycling",
-            activityUnit: "kg",
-            factorValue: -0.21,
-            source: "DEFRA",
-            country: "MY",
-            validFrom: new Date("2024-01-01"),
-        },
-        // Cat 13: Downstream Leased Assets
-        {
-            category: "scope3",
-            scope3Category: "cat13_downstream_leased",
-            activityType: "building",
-            activityUnit: "sqm",
-            factorValue: 35.0,
-            source: "DEFRA",
-            country: "US",
-            validFrom: new Date("2024-01-01"),
-        },
-    ];
+    await prisma.activityData.updateMany({
+        data: { emissionFactorId: null },
+    });
+    await prisma.emissionFactor.deleteMany({
+        where: { isCustom: false, organizationId: null },
+    });
 
-    for (const factor of emissionFactors) {
+    const emissionFactors = buildMatcEmissionFactors();
+    const validTo = new Date("2025-12-31");
+
+    for (const { matcPriority, ...factorData } of emissionFactors) {
+        void matcPriority;
         await prisma.emissionFactor.create({
             data: {
-                ...factor,
-                validTo: new Date("2025-12-31"),
+                ...factorData,
+                validTo,
             },
         });
     }
-    console.log("Created emission factors");
+    console.log(
+        `Created ${emissionFactors.length} core MATC emission factors (US + MY)`,
+    );
+
+    const matcSuppliers = [
+        {
+            name: "Apex Stainless Supply Co.",
+            categories: ["stainless_steel"] as const,
+            country: "US",
+            contactEmail: "sustainability@apexstainless.com",
+        },
+        {
+            name: "Pacific Aluminum Works",
+            categories: ["aluminum"] as const,
+            country: "US",
+            contactEmail: "esg@pacificaluminum.com",
+        },
+        {
+            name: "ChemTreat Solutions",
+            categories: ["chemicals"] as const,
+            country: "US",
+            contactEmail: "compliance@chemtreat.com",
+        },
+        {
+            name: "Midwest Freight Logistics",
+            categories: ["logistics"] as const,
+            country: "US",
+            contactEmail: "operations@midwestfreight.com",
+        },
+        {
+            name: "Global Metals & Logistics",
+            categories: ["stainless_steel", "logistics"] as const,
+            country: "US",
+            contactEmail: "esg@globalmetalslogistics.com",
+        },
+    ];
+
+    for (const supplier of matcSuppliers) {
+        const existing = await prisma.supplier.findFirst({
+            where: {
+                organizationId: orgMatc.id,
+                name: supplier.name,
+            },
+        });
+
+        if (!existing) {
+            await prisma.supplier.create({
+                data: {
+                    organizationId: orgMatc.id,
+                    name: supplier.name,
+                    country: supplier.country,
+                    contactEmail: supplier.contactEmail,
+                    categories: [...supplier.categories],
+                },
+            });
+        } else {
+            await prisma.supplier.update({
+                where: { id: existing.id },
+                data: { categories: [...supplier.categories] },
+            });
+        }
+    }
+    console.log("Created MATC priority suppliers");
+
+    await ensureTemplateOnDisk();
+    console.log("Created GHG Protocol / MATC Excel template");
 
     console.log("Seeding complete!");
 }

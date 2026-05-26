@@ -88,13 +88,6 @@ export function ActivitiesList({
         });
     };
 
-    const emptyState = (
-        <TableEmptyState
-            title="No activities recorded yet"
-            description="Add your first activity to start tracking emissions."
-        />
-    );
-
     return (
         <div className="space-y-4">
             <div className="hidden md:block">
@@ -103,33 +96,48 @@ export function ActivitiesList({
                         <TableRow>
                             <TableHead>Activity</TableHead>
                             <TableHead>Details</TableHead>
-                            <TableHead className="text-right">Emissions</TableHead>
+                            <TableHead className="text-right">
+                                Emissions
+                            </TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            <TableHead className="text-right">
+                                Actions
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {optimisticActivities.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={5}>{emptyState}</TableCell>
-                            </TableRow>
+                            <TableEmptyState
+                                colSpan={5}
+                                title="No activities recorded yet"
+                                description="Add your first activity to start tracking emissions."
+                            />
                         ) : (
                             optimisticActivities.map((activity) => (
                                 <TableRow key={activity.id}>
                                     <TableCell className="font-medium">
-                                        {getActivityLabel(activity, activityLabels)}
+                                        {getActivityLabel(
+                                            activity,
+                                            activityLabels,
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-sm text-muted-foreground">
                                         {getActivityDetails(activity)}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        {formatTonCO2e(activity.calculatedEmissions)}
+                                        {formatTonCO2e(
+                                            activity.calculatedEmissions,
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         <Badge
                                             className={`text-xs ${STATUS_BADGE_STYLES[activity.dataStatus]}`}
                                         >
-                                            {DATA_STATUS_LABELS[activity.dataStatus]}
+                                            {
+                                                DATA_STATUS_LABELS[
+                                                    activity.dataStatus
+                                                ]
+                                            }
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -138,7 +146,9 @@ export function ActivitiesList({
                                             status={activity.dataStatus}
                                             canSubmit={canSubmit}
                                             canApprove={canApprove}
-                                            isLoading={actionLoadingId === activity.id}
+                                            isLoading={
+                                                actionLoadingId === activity.id
+                                            }
                                             onSubmit={handleSubmit}
                                             onApprove={handleApprove}
                                         />
@@ -163,12 +173,19 @@ export function ActivitiesList({
                             <CardHeader className="pb-2">
                                 <div className="flex justify-between items-start">
                                     <CardTitle className="text-base">
-                                        {getActivityLabel(activity, activityLabels)}
+                                        {getActivityLabel(
+                                            activity,
+                                            activityLabels,
+                                        )}
                                     </CardTitle>
                                     <Badge
                                         className={`text-xs ${STATUS_BADGE_STYLES[activity.dataStatus]}`}
                                     >
-                                        {DATA_STATUS_LABELS[activity.dataStatus]}
+                                        {
+                                            DATA_STATUS_LABELS[
+                                                activity.dataStatus
+                                            ]
+                                        }
                                     </Badge>
                                 </div>
                             </CardHeader>
@@ -181,7 +198,9 @@ export function ActivitiesList({
                                         <span className="text-muted-foreground">
                                             {row.label}:
                                         </span>
-                                        <span className="font-medium">{row.value}</span>
+                                        <span className="font-medium">
+                                            {row.value}
+                                        </span>
                                     </div>
                                 ))}
                                 <div className="grid grid-cols-2 gap-2">
@@ -189,7 +208,9 @@ export function ActivitiesList({
                                         Emissions:
                                     </span>
                                     <span className="font-medium">
-                                        {formatTonCO2e(activity.calculatedEmissions)}
+                                        {formatTonCO2e(
+                                            activity.calculatedEmissions,
+                                        )}
                                     </span>
                                 </div>
                             </CardContent>
@@ -201,8 +222,8 @@ export function ActivitiesList({
             {pagination.totalPages > 1 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-2">
                     <p className="text-sm text-muted-foreground">
-                        Showing{" "}
-                        {(pagination.page - 1) * pagination.limit + 1} to{" "}
+                        Showing {(pagination.page - 1) * pagination.limit + 1}{" "}
+                        to{" "}
                         {Math.min(
                             pagination.page * pagination.limit,
                             pagination.total,

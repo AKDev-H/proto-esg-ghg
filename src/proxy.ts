@@ -9,6 +9,7 @@ export default auth((req) => {
     const isProtected =
         pathname.startsWith("/dashboard") ||
         pathname.startsWith("/activities") ||
+        pathname.startsWith("/suppliers") ||
         pathname.startsWith("/factors") ||
         pathname.startsWith("/reports") ||
         pathname.startsWith("/settings") ||
@@ -32,6 +33,7 @@ export const config = {
     matcher: [
         "/dashboard/:path*",
         "/activities/:path*",
+        "/suppliers/:path*",
         "/factors/:path*",
         "/reports/:path*",
         "/settings/:path*",

@@ -1,5 +1,6 @@
 generator client {
     provider = "prisma-client-js"
+    output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -74,6 +75,12 @@ enum ReportType {
     detailed
 }
 
+enum ExcelImportStatus {
+    uploading
+    completed
+    failed
+}
+
 enum TransportMode {
     truck
     rail
@@ -97,6 +104,28 @@ enum ApprovalStatus {
     rejected
 }
 
+enum SupplierCategory {
+    stainless_steel
+    aluminum
+    chemicals
+    logistics
+    other
+}
+
+enum QuestionnaireType {
+    carbon_disclosure
+    pcf
+    energy_usage
+}
+
+enum QuestionnaireInviteStatus {
+    pending
+    opened
+    submitted
+    expired
+    revoked
+}
+
 model Organization {
     id            String       @id @default(cuid())
     name          String
@@ -114,10 +143,12 @@ model Organization {
     reportingYears  ReportingYear[]
     emissionFactors EmissionFactor[]
     suppliers       Supplier[]
+    supplierInvites SupplierQuestionnaireInvite[]
     products        Product[]
     reports         Report[]
     auditLogs       AuditLog[]
     activityDatas   ActivityData[]
+    excelImports    ExcelImport[]
 
     @@index([slug])
     @@index([country])
@@ -133,13 +164,15 @@ model User {
     createdAt      DateTime @default(now())
     updatedAt      DateTime @updatedAt
 
-    organization     Organization?     @relation(fields: [organizationId], references: [id])
-    activities       ActivityData[]    @relation("SubmittedBy")
-    approvals        ActivityData[]    @relation("ApprovedBy")
-    approvalRequests ApprovalRequest[] @relation("RequestedBy")
-    approvalReviews  ApprovalRequest[] @relation("ReviewedBy")
-    reports          Report[]
-    auditLogs        AuditLog[]
+    organization         Organization?                 @relation(fields: [organizationId], references: [id])
+    activities           ActivityData[]                @relation("SubmittedBy")
+    approvals            ActivityData[]                @relation("ApprovedBy")
+    approvalRequests     ApprovalRequest[]             @relation("RequestedBy")
+    approvalReviews      ApprovalRequest[]             @relation("ReviewedBy")
+    reports              Report[]
+    auditLogs            AuditLog[]
+    questionnaireInvites SupplierQuestionnaireInvite[] @relation("QuestionnaireInvitesCreated")
+    excelImports         ExcelImport[]
 
     @@index([email])
     @@index([organizationId])
@@ -247,23 +280,23 @@ model ActivityData {
     approvedBy     User?           @relation("ApprovedBy", fields: [approvedById], references: [id])
     emissionFactor EmissionFactor? @relation(fields: [emissionFactorId], references: [id])
 
-    scope1Vehicles       Scope1Vehicle[]
-    scope1Stationary     Scope1Stationary[]
-    scope1Refrigerants   Scope1Refrigerant[]
-    scope2Electricity    Scope2Electricity?
-    scope3PurchasedGoods Scope3PurchasedGood[]
-    scope3CapitalGoods   Scope3CapitalGood[]
-    scope3FuelEnergy     Scope3FuelEnergy[]
-    scope3Transportation Scope3Transportation[]
-    scope3Waste          Scope3Waste[]
-    scope3BusinessTravel Scope3BusinessTravel[]
+    scope1Vehicles          Scope1Vehicle[]
+    scope1Stationary        Scope1Stationary[]
+    scope1Refrigerants      Scope1Refrigerant[]
+    scope2Electricity       Scope2Electricity?
+    scope3PurchasedGoods    Scope3PurchasedGood[]
+    scope3CapitalGoods      Scope3CapitalGood[]
+    scope3FuelEnergy        Scope3FuelEnergy[]
+    scope3Transportation    Scope3Transportation[]
+    scope3Waste             Scope3Waste[]
+    scope3BusinessTravel    Scope3BusinessTravel[]
     scope3EmployeeCommuting Scope3EmployeeCommuting[]
-    scope3UpstreamLeased Scope3UpstreamLeased[]
+    scope3UpstreamLeased    Scope3UpstreamLeased[]
     scope3ProductProcessing Scope3ProductProcessing[]
-    scope3ProductUse     Scope3ProductUse[]
-    scope3EndOfLife      Scope3EndOfLife[]
-    scope3DownstreamLeased Scope3DownstreamLeased[]
-    approvalRequests     ApprovalRequest[]
+    scope3ProductUse        Scope3ProductUse[]
+    scope3EndOfLife         Scope3EndOfLife[]
+    scope3DownstreamLeased  Scope3DownstreamLeased[]
+    approvalRequests        ApprovalRequest[]
 
     @@index([organizationId])
     @@index([reportingYearId])
@@ -337,15 +370,15 @@ model Scope3PurchasedGood {
 }
 
 model Scope3Transportation {
-    id               String        @id @default(cuid())
-    activityDataId   String        @unique
-    transportMode    TransportMode
-    weight           Float
-    distance         Float
-    distanceUnit     String        @default("km")
-    transportCategory String       @default("upstream")
-    createdAt        DateTime      @default(now())
-    updatedAt        DateTime      @updatedAt
+    id                String        @id @default(cuid())
+    activityDataId    String        @unique
+    transportMode     TransportMode
+    weight            Float
+    distance          Float
+    distanceUnit      String        @default("km")
+    transportCategory String        @default("upstream")
+    createdAt         DateTime      @default(now())
+    updatedAt         DateTime      @updatedAt
 
     activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
 }
@@ -389,14 +422,14 @@ model Scope3CapitalGood {
 }
 
 model Scope3FuelEnergy {
-    id                String   @id @default(cuid())
-    activityDataId    String   @unique
-    fuelType          String
-    quantity          Float
-    unit              String
+    id                  String   @id @default(cuid())
+    activityDataId      String   @unique
+    fuelType            String
+    quantity            Float
+    unit                String
     activityDescription String
-    createdAt         DateTime @default(now())
-    updatedAt         DateTime @updatedAt
+    createdAt           DateTime @default(now())
+    updatedAt           DateTime @updatedAt
 
     activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
 }
@@ -429,14 +462,14 @@ model Scope3BusinessTravel {
 }
 
 model Scope3EmployeeCommuting {
-    id                   String   @id @default(cuid())
-    activityDataId       String   @unique
-    transportMode        String
+    id                    String   @id @default(cuid())
+    activityDataId        String   @unique
+    transportMode         String
     averageDistancePerDay Float
-    daysPerYear          Int
-    numberOfEmployees    Int
-    createdAt            DateTime @default(now())
-    updatedAt            DateTime @updatedAt
+    daysPerYear           Int
+    numberOfEmployees     Int
+    createdAt             DateTime @default(now())
+    updatedAt             DateTime @updatedAt
 
     activityData ActivityData @relation(fields: [activityDataId], references: [id], onDelete: Cascade)
 }
@@ -481,19 +514,64 @@ model Scope3DownstreamLeased {
 }
 
 model Supplier {
-    id             String   @id @default(cuid())
-    organizationId String
-    name           String
-    country        String?
-    contactEmail   String?
-    industryType   String?
-    createdAt      DateTime @default(now())
-    updatedAt      DateTime @updatedAt
+    id                String             @id @default(cuid())
+    organizationId    String
+    name              String
+    country           String?
+    contactEmail      String?
+    industryType      String?
+    categories        SupplierCategory[] @default([])
+    otherCategoryType String?
+    createdAt         DateTime           @default(now())
+    updatedAt         DateTime           @updatedAt
 
-    organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    organization   Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
     purchasedGoods Scope3PurchasedGood[]
+    invites        SupplierQuestionnaireInvite[]
 
     @@index([organizationId])
+}
+
+model SupplierQuestionnaireInvite {
+    id                 String                    @id @default(cuid())
+    organizationId     String
+    supplierId         String
+    tokenHash          String                    @unique
+    questionnaireTypes QuestionnaireType[]
+    status             QuestionnaireInviteStatus @default(pending)
+    expiresAt          DateTime
+    sentAt             DateTime?
+    openedAt           DateTime?
+    submittedAt        DateTime?
+    revokedAt          DateTime?
+    createdById        String
+    createdAt          DateTime                  @default(now())
+    updatedAt          DateTime                  @updatedAt
+
+    organization Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    supplier     Supplier                       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+    createdBy    User                           @relation("QuestionnaireInvitesCreated", fields: [createdById], references: [id])
+    response     SupplierQuestionnaireResponse?
+
+    @@index([organizationId])
+    @@index([supplierId])
+    @@index([status])
+}
+
+model SupplierQuestionnaireResponse {
+    id               String   @id @default(cuid())
+    inviteId         String   @unique
+    carbonDisclosure Json?
+    pcf              Json?
+    energyUsage      Json?
+    respondentName   String?
+    respondentEmail  String?
+    respondentTitle  String?
+    submittedAt      DateTime @default(now())
+    createdAt        DateTime @default(now())
+    updatedAt        DateTime @updatedAt
+
+    invite SupplierQuestionnaireInvite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
 }
 
 model Product {
@@ -517,6 +595,8 @@ model Report {
     reportType     ReportType
     filePath       String?
     status         String     @default("pending")
+    dataSource     String     @default("dashboard")
+    excelImportId  String?
     generatedAt    DateTime?
     generatedById  String?
     createdAt      DateTime   @default(now())
@@ -524,8 +604,33 @@ model Report {
 
     organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
     generatedBy  User?        @relation(fields: [generatedById], references: [id])
+    excelImport  ExcelImport? @relation(fields: [excelImportId], references: [id], onDelete: SetNull)
 
     @@index([organizationId])
+    @@index([excelImportId])
+}
+
+model ExcelImport {
+    id             String            @id @default(cuid())
+    organizationId String
+    uploadedById   String
+    fileName       String
+    originalSize   Int
+    compressedSize Int?
+    filePath       String
+    reportingYear  Int
+    status         ExcelImportStatus @default(uploading)
+    rowCount       Int               @default(0)
+    parsedSummary  Json?
+    createdAt      DateTime          @default(now())
+    updatedAt      DateTime          @updatedAt
+
+    organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    uploadedBy   User         @relation(fields: [uploadedById], references: [id])
+    reports      Report[]
+
+    @@index([organizationId])
+    @@index([status])
 }
 
 model AuditLog {

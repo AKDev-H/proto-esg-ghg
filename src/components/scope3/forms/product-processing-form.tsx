@@ -22,7 +22,7 @@ export function ProductProcessingForm({ factors, onSuccess }: ProductProcessingF
 
     const form = useForm<ProductProcessingFormData>({
         resolver: zodResolver(productProcessingSchema),
-        defaultValues: { processingType: "assembly" },
+        defaultValues: { processingType: "refining", unit: "kg" },
     });
 
     const onSubmit = async (data: ProductProcessingFormData) => {
@@ -30,7 +30,7 @@ export function ProductProcessingForm({ factors, onSuccess }: ProductProcessingF
             {
                 scope: "scope3",
                 scope3Category: "cat10_product_processing",
-                activityType: "product_processing",
+                activityType: "surface_treatment_passivation",
                 inputValue: data.quantity,
                 inputUnit: data.unit,
             },

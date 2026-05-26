@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { activityFilterSchema } from "@/modules/activities/schemas";
-import { calculateEmissions } from "@/modules/calculations/services/calculations";
+import {
+    calculateEmissions,
+    resolveScope3FactorActivityType,
+} from "@/modules/calculations/services/calculations";
 import { mapActivityRecord } from "@/modules/activities/services/map-activity-record";
 import { canCreateActivities } from "@/lib/permissions";
 
@@ -176,16 +179,26 @@ export async function POST(request: NextRequest) {
         let calculatedEmissions: number | null = null;
         let matchedFactorId: string | undefined = emissionFactorId;
 
-        // Auto-match emission factor if not provided
         if (!matchedFactorId) {
             const org = await prisma.organization.findUnique({
                 where: { id: organizationId },
                 select: { country: true },
             });
 
+            const country = org?.country || "US";
+            const factorActivityType =
+                scope === "scope3" && scope3Category
+                    ? resolveScope3FactorActivityType(
+                          scope3Category,
+                          activityType,
+                          body.scope3Details,
+                      )
+                    : activityType;
+
             const factorWhere: Record<string, unknown> = {
                 category: scope,
-                country: org?.country || "US",
+                country,
+                activityType: factorActivityType,
                 OR: [{ isCustom: false }, { organizationId: organizationId }],
             };
 
@@ -193,10 +206,25 @@ export async function POST(request: NextRequest) {
                 factorWhere.scope3Category = scope3Category;
             }
 
-            const matchedFactor = await prisma.emissionFactor.findFirst({
+            let matchedFactor = await prisma.emissionFactor.findFirst({
                 where: factorWhere,
                 orderBy: { isCustom: "desc" },
             });
+
+            if (!matchedFactor && scope3Category) {
+                matchedFactor = await prisma.emissionFactor.findFirst({
+                    where: {
+                        category: scope,
+                        country,
+                        scope3Category,
+                        OR: [
+                            { isCustom: false },
+                            { organizationId: organizationId },
+                        ],
+                    },
+                    orderBy: { isCustom: "desc" },
+                });
+            }
 
             if (matchedFactor) {
                 matchedFactorId = matchedFactor.id;

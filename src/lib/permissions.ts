@@ -4,6 +4,7 @@ export type Feature =
     | "manageUsers"
     | "manageOrgSettings"
     | "manageFactors"
+    | "manageSuppliers"
     | "createActivities"
     | "submitActivities"
     | "approveActivities"
@@ -15,6 +16,7 @@ const ROLE_FEATURES: Record<UserRole, Feature[]> = {
         "manageUsers",
         "manageOrgSettings",
         "manageFactors",
+        "manageSuppliers",
         "createActivities",
         "submitActivities",
         "approveActivities",
@@ -25,6 +27,7 @@ const ROLE_FEATURES: Record<UserRole, Feature[]> = {
         "manageUsers",
         "manageOrgSettings",
         "manageFactors",
+        "manageSuppliers",
         "createActivities",
         "submitActivities",
         "approveActivities",
@@ -33,6 +36,7 @@ const ROLE_FEATURES: Record<UserRole, Feature[]> = {
     ],
     sustainability_manager: [
         "manageFactors",
+        "manageSuppliers",
         "createActivities",
         "submitActivities",
         "generateReports",
@@ -69,6 +73,12 @@ export function canManageFactors(
     role: UserRole | string | null | undefined,
 ): boolean {
     return can(role, "manageFactors");
+}
+
+export function canManageSuppliers(
+    role: UserRole | string | null | undefined,
+): boolean {
+    return can(role, "manageSuppliers");
 }
 
 export function canCreateActivities(

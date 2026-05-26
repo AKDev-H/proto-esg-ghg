@@ -75,17 +75,17 @@ export const SCOPE3_CATEGORY_SHORT_LABELS: Record<Scope3Category, string> = {
 
 export const SCOPE3_CATEGORY_IMPORTANCE: Record<Scope3Category, "high" | "medium" | "low" | "na"> = {
     cat1_purchased_goods: "high",
-    cat2_capital_goods: "medium",
-    cat3_fuel_energy: "medium",
+    cat2_capital_goods: "high",
+    cat3_fuel_energy: "high",
     cat4_upstream_transport: "high",
-    cat5_waste: "medium",
+    cat5_waste: "high",
     cat6_business_travel: "low",
     cat7_employee_commuting: "low",
     cat8_upstream_leased: "low",
     cat9_downstream_transport: "high",
-    cat10_product_processing: "low",
-    cat11_product_use: "high",
-    cat12_end_of_life: "high",
+    cat10_product_processing: "medium",
+    cat11_product_use: "low",
+    cat12_end_of_life: "low",
     cat13_downstream_leased: "low",
 };
 

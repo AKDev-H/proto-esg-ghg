@@ -34,7 +34,7 @@ export function TransportForm({ factors, category = "cat4_upstream_transport", o
             {
                 scope: "scope3",
                 scope3Category: category,
-                activityType: "transport",
+                activityType: data.mode,
                 inputValue: tonKm,
                 inputUnit: "ton-km",
             },

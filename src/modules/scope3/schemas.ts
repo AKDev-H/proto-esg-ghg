@@ -12,7 +12,7 @@ export const purchasedGoodsSchema = z.object({
 })
 
 export const capitalGoodsSchema = z.object({
-    equipmentType: z.enum(['machinery', 'vehicle', 'building', 'computer', 'furniture', 'other'], {
+    equipmentType: z.enum(['machinery', 'precision_tooling', 'computer', 'vehicle', 'building', 'furniture', 'other'], {
         required_error: 'Equipment type is required',
         invalid_type_error: 'Invalid equipment type'
     }),

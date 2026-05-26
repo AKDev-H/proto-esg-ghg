@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MATC_EQUIPMENT_TYPES } from "@/lib/constants";
 import { capitalGoodsSchema } from "@/modules/scope3/schemas";
 import { Scope3ActivityFormShell } from "@/modules/scope3/components/scope3-activity-form-shell";
 import { useCreateActivityForm } from "@/modules/activities/hooks/use-create-activity-form";
@@ -22,7 +23,7 @@ export function CapitalGoodsForm({ factors, onSuccess }: CapitalGoodsFormProps) 
 
     const form = useForm<CapitalGoodsFormData>({
         resolver: zodResolver(capitalGoodsSchema),
-        defaultValues: { equipmentType: "machinery" },
+        defaultValues: { equipmentType: "machinery", unit: "kg" },
     });
 
     const onSubmit = async (data: CapitalGoodsFormData) => {
@@ -30,7 +31,7 @@ export function CapitalGoodsForm({ factors, onSuccess }: CapitalGoodsFormProps) 
             {
                 scope: "scope3",
                 scope3Category: "cat2_capital_goods",
-                activityType: "capital_goods",
+                activityType: data.equipmentType,
                 inputValue: data.quantity,
                 inputUnit: data.unit,
             },
@@ -69,11 +70,11 @@ export function CapitalGoodsForm({ factors, onSuccess }: CapitalGoodsFormProps) 
                     <Select value={form.watch("equipmentType")} onValueChange={(v) => form.setValue("equipmentType", v as EquipmentType)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="machinery">Machinery</SelectItem>
-                            <SelectItem value="vehicle">Vehicle</SelectItem>
-                            <SelectItem value="building">Building</SelectItem>
-                            <SelectItem value="computer">Computer</SelectItem>
-                            <SelectItem value="furniture">Furniture</SelectItem>
+                            {MATC_EQUIPMENT_TYPES.map((e) => (
+                                <SelectItem key={e.value} value={e.value}>
+                                    {e.label}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -89,7 +90,13 @@ export function CapitalGoodsForm({ factors, onSuccess }: CapitalGoodsFormProps) 
                 </div>
                 <div className="space-y-2">
                     <Label>Unit</Label>
-                    <Input {...form.register("unit")} placeholder="e.g., units" />
+                    <Select value={form.watch("unit")} onValueChange={(v) => form.setValue("unit", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="kg">kg</SelectItem>
+                            <SelectItem value="ton">ton</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
         </Scope3ActivityFormShell>

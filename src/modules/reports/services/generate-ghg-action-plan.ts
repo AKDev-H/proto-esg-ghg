@@ -1,4 +1,5 @@
 import { SCOPE3_CATEGORY_LABELS } from "@/lib/constants";
+import { MATC_SCOPE3_PRIORITY_CATEGORIES } from "@/lib/matc-emission-factors";
 import type { Scope3Category } from "@/types";
 
 export interface GHGActionPlanInput {
@@ -46,26 +47,21 @@ export interface GHGActionPlan {
     targetSettingGuidance: string;
 }
 
-const MANUFACTURING_PRIORITY_CATEGORIES: Scope3Category[] = [
-    "cat1_purchased_goods",
-    "cat11_product_use",
-    "cat4_upstream_transport",
-    "cat9_downstream_transport",
-    "cat12_end_of_life",
-];
+const MANUFACTURING_PRIORITY_CATEGORIES: Scope3Category[] =
+    MATC_SCOPE3_PRIORITY_CATEGORIES;
 
 const SCOPE3_CATEGORY_ACTIONS: Record<Scope3Category, string[]> = {
     cat1_purchased_goods: [
-        "Engage priority suppliers to collect product-level emission data (primary data per Scope 3 Standard)",
-        "Apply spend-based screening then refine with supplier-specific emission factors",
-        "Prioritize low-carbon procurement for high-volume raw materials",
+        "Track stainless steel and aluminum procurement with supplier-specific factors (DEFRA/Ecoinvent/USEEIO)",
+        "Quantify chemical surface treatment and passivation chemicals as purchased goods",
+        "Engage tier-1 metal suppliers for primary emission data per Scope 3 Standard",
     ],
     cat2_capital_goods: [
-        "Include embodied carbon criteria in capital equipment procurement",
-        "Extend asset life and refurbish machinery where feasible",
+        "Apply embodied carbon criteria to tooling and machinery procurement (USEEIO/EXIOBASE)",
+        "Extend precision tooling life and refurbish CNC assets where feasible",
     ],
     cat3_fuel_energy: [
-        "Quantify upstream fuel and energy-related activities not included in Scope 1 and 2",
+        "Quantify clean room electricity upstream impacts (WTT and T&D per DEFRA)",
         "Address transmission and distribution losses from purchased energy",
     ],
     cat4_upstream_transport: [
@@ -73,8 +69,8 @@ const SCOPE3_CATEGORY_ACTIONS: Record<Scope3Category, string[]> = {
         "Collaborate with logistics providers on tonne-km reduction targets",
     ],
     cat5_waste: [
+        "Track scrap metal recycling and hazardous waste handling separately (DEFRA factors)",
         "Apply waste hierarchy: reduce, reuse, recycle before disposal",
-        "Track waste treatment pathways separately (landfill, incineration, recycling)",
     ],
     cat6_business_travel: [
         "Replace high-emission travel with virtual meetings where appropriate",
@@ -93,6 +89,7 @@ const SCOPE3_CATEGORY_ACTIONS: Record<Scope3Category, string[]> = {
         "Shift downstream freight to lower-emission transport modes",
     ],
     cat10_product_processing: [
+        "Quantify chemical surface treatment and passivation process emissions",
         "Work with downstream processors on energy and process efficiency",
     ],
     cat11_product_use: [
@@ -156,7 +153,7 @@ function getTopCategoryActions(
 function buildInventoryQualityActions(input: GHGActionPlanInput): string[] {
     const actions: string[] = [
         "Confirm organizational and operational boundaries per GHG Protocol Corporate Standard",
-        "Document emission factor sources (EPA/DEFRA) and validity periods",
+        "Document emission factor sources (EPA/DEFRA/EXIOBASE/USEEIO/Ecoinvent) and validity periods",
     ];
 
     if (input.activityCount < 20) {

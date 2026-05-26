@@ -17,7 +17,14 @@ export type LeaseType = "operational" | "financial";
 export type ProcessingType = "assembly" | "fabrication" | "refining" | "packaging" | "other";
 export type FuelType = "natural_gas" | "diesel" | "gasoline" | "coal" | "biomass" | "electricity";
 export type ActivityDescription = "extraction" | "production" | "transmission" | "distribution";
-export type EquipmentType = "machinery" | "vehicle" | "building" | "computer" | "furniture" | "other";
+export type EquipmentType =
+    | "machinery"
+    | "precision_tooling"
+    | "computer"
+    | "vehicle"
+    | "building"
+    | "furniture"
+    | "other";
 export type AssetType = "vehicle" | "equipment" | "building" | "machinery";
 
 export interface Activity {

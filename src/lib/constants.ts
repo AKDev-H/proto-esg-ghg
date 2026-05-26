@@ -7,7 +7,7 @@ export const COUNTRY_CONFIG = {
             weight: "lb",
             fuel: "gallon",
         },
-        factorSources: ["EPA", "DEFRA"],
+        factorSources: ["EPA", "DEFRA", "USEEIO", "EXIOBASE", "Ecoinvent"],
         defaultFactorSource: "EPA",
     },
     MY: {
@@ -18,8 +18,8 @@ export const COUNTRY_CONFIG = {
             weight: "kg",
             fuel: "liter",
         },
-        factorSources: ["EPA", "DEFRA"],
-        defaultFactorSource: "EPA",
+        factorSources: ["EPA", "DEFRA", "EXIOBASE", "Ecoinvent", "Malaysia Grid"],
+        defaultFactorSource: "DEFRA",
     },
 } as const;
 
@@ -131,20 +131,55 @@ export const REFRIGERANT_TYPES = [
     { value: "r507a", label: "R-507A" },
 ] as const;
 
-export const MATERIAL_TYPES = [
-    { value: "steel", label: "Steel" },
+export const MATC_MATERIAL_TYPES = [
+    { value: "stainless_steel", label: "Stainless Steel" },
     { value: "aluminum", label: "Aluminum" },
-    { value: "copper", label: "Copper" },
-    { value: "plastic", label: "Plastic" },
-    { value: "paper", label: "Paper" },
-    { value: "glass", label: "Glass" },
-    { value: "concrete", label: "Concrete" },
-    { value: "chemicals", label: "Chemicals" },
-    { value: "textiles", label: "Textiles" },
-    { value: "packaging", label: "Packaging Materials" },
-    { value: "office_supplies", label: "Office Supplies" },
-    { value: "other", label: "Other" },
+    { value: "chemicals_passivation", label: "Chemical Surface Treatment / Passivation" },
 ] as const;
+
+export const MATERIAL_TYPES = MATC_MATERIAL_TYPES;
+
+export const MATC_EQUIPMENT_TYPES = [
+    { value: "machinery", label: "Tooling & Machinery" },
+    { value: "precision_tooling", label: "Precision Tooling / CNC" },
+    { value: "computer", label: "Metrology & Control Systems" },
+    { value: "other", label: "Other Capital Equipment" },
+] as const;
+
+export const MATC_WASTE_TYPES = [
+    { value: "metal", label: "Scrap Metal" },
+    { value: "hazardous", label: "Hazardous Waste" },
+    { value: "non_hazardous", label: "Non-Hazardous Waste" },
+    { value: "electronic", label: "Electronic Waste" },
+] as const;
+
+export const MATC_FUEL_ENERGY_TYPES = [
+    { value: "electricity", label: "Clean Room Electricity (Upstream)" },
+    { value: "natural_gas", label: "Natural Gas" },
+    { value: "diesel", label: "Diesel" },
+] as const;
+
+export const SUPPLIER_CATEGORIES = [
+    { value: "stainless_steel", label: "Stainless Steel", priority: true },
+    { value: "aluminum", label: "Aluminum", priority: true },
+    { value: "chemicals", label: "Chemicals", priority: true },
+    { value: "logistics", label: "Logistics Provider", priority: true },
+    { value: "other", label: "Other", priority: false },
+] as const;
+
+export const QUESTIONNAIRE_TYPES = [
+    { value: "carbon_disclosure", label: "Carbon Disclosure Questionnaire" },
+    { value: "pcf", label: "Product Carbon Footprint (PCF)" },
+    { value: "energy_usage", label: "Energy Usage Request" },
+] as const;
+
+export const QUESTIONNAIRE_INVITE_STATUS_LABELS = {
+    pending: "Pending",
+    opened: "Opened",
+    submitted: "Submitted",
+    expired: "Expired",
+    revoked: "Revoked",
+} as const;
 
 export const TRANSPORT_MODES = [
     { value: "truck", label: "Truck" },

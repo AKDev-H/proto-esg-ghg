@@ -27,6 +27,7 @@ export function useCreateActivityForm({
             const result = await createActivityWithDetails(
                 {
                     ...createPayload,
+                    scope3Details: detailsPayload,
                     emissionFactorId:
                         createPayload.emissionFactorId ||
                         selectedFactorId ||

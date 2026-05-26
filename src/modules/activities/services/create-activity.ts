@@ -5,6 +5,7 @@ export interface CreateActivityPayload {
     inputUnit: string;
     emissionFactorId?: string;
     scope3Category?: string;
+    scope3Details?: Record<string, unknown>;
     comments?: string;
     facilityId?: string;
     reportingYearId?: string;

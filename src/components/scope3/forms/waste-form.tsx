@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MATC_WASTE_TYPES } from "@/lib/constants";
 import { wasteSchema } from "@/modules/scope3/schemas";
 import { Scope3ActivityFormShell } from "@/modules/scope3/components/scope3-activity-form-shell";
 import { useCreateActivityForm } from "@/modules/activities/hooks/use-create-activity-form";
@@ -22,7 +23,7 @@ export function WasteForm({ factors, onSuccess }: WasteFormProps) {
 
     const form = useForm<WasteFormData>({
         resolver: zodResolver(wasteSchema),
-        defaultValues: { wasteType: "non_hazardous", disposalMethod: "landfill", unit: "kg" },
+        defaultValues: { wasteType: "metal", disposalMethod: "recycling", unit: "kg" },
     });
 
     const onSubmit = async (data: WasteFormData) => {
@@ -30,7 +31,7 @@ export function WasteForm({ factors, onSuccess }: WasteFormProps) {
             {
                 scope: "scope3",
                 scope3Category: "cat5_waste",
-                activityType: "waste",
+                activityType: `${data.wasteType}_${data.disposalMethod}`,
                 inputValue: data.quantity,
                 inputUnit: data.unit,
             },
@@ -69,10 +70,11 @@ export function WasteForm({ factors, onSuccess }: WasteFormProps) {
                     <Select value={form.watch("wasteType")} onValueChange={(v) => form.setValue("wasteType", v as WasteType)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="hazardous">Hazardous</SelectItem>
-                            <SelectItem value="non_hazardous">Non-Hazardous</SelectItem>
-                            <SelectItem value="electronic">Electronic</SelectItem>
-                            <SelectItem value="plastic">Plastic</SelectItem>
+                            {MATC_WASTE_TYPES.map((w) => (
+                                <SelectItem key={w.value} value={w.value}>
+                                    {w.label}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
