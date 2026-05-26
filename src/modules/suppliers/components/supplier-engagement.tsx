@@ -16,13 +16,21 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
     SUPPLIER_CATEGORIES,
     QUESTIONNAIRE_TYPES,
     QUESTIONNAIRE_INVITE_STATUS_LABELS,
 } from "@/lib/constants";
 import { createSupplierSchema } from "@/modules/suppliers/schemas";
+import { QuestionnaireResponseDetailModal } from "@/modules/suppliers/components/questionnaire-response-detail-modal";
 import type {
-    QuestionnaireInviteRecord,
     QuestionnaireResponseRecord,
     SupplierCategory,
     SupplierRecord,
@@ -33,8 +41,11 @@ import {
     isPrioritySupplier,
     sortSuppliersByPriority,
 } from "@/modules/suppliers/utils/categories";
+import {
+    formatSubmissionDate,
+} from "@/modules/suppliers/utils/questionnaire-labels";
 import { toast } from "@/hooks/use-toast";
-import { Copy, Link2, Plus, RefreshCw } from "lucide-react";
+import { Copy, Eye, Link2, Plus, RefreshCw } from "lucide-react";
 import { z } from "zod";
 
 type CreateSupplierForm = z.infer<typeof createSupplierSchema>;
@@ -86,7 +97,6 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
 
 export function SupplierEngagement({ canManage }: SupplierEngagementProps) {
     const [suppliers, setSuppliers] = useState<SupplierRecord[]>([]);
-    const [invites, setInvites] = useState<QuestionnaireInviteRecord[]>([]);
     const [responses, setResponses] = useState<QuestionnaireResponseRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreateForm, setShowCreateForm] = useState(false);
@@ -96,6 +106,9 @@ export function SupplierEngagement({ canManage }: SupplierEngagementProps) {
         "pcf",
         "energy_usage",
     ]);
+    const [selectedResponse, setSelectedResponse] =
+        useState<QuestionnaireResponseRecord | null>(null);
+    const [detailModalOpen, setDetailModalOpen] = useState(false);
 
     const form = useForm<CreateSupplierForm>({
         resolver: zodResolver(createSupplierSchema),
@@ -105,19 +118,14 @@ export function SupplierEngagement({ canManage }: SupplierEngagementProps) {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [suppliersRes, invitesRes, responsesRes] = await Promise.all([
+            const [suppliersRes, responsesRes] = await Promise.all([
                 fetch("/api/suppliers"),
-                fetch("/api/supplier-questionnaires"),
                 fetch("/api/supplier-questionnaires?view=responses"),
             ]);
 
             if (suppliersRes.ok) {
                 const data = await suppliersRes.json();
                 setSuppliers(data.suppliers);
-            }
-            if (invitesRes.ok) {
-                const data = await invitesRes.json();
-                setInvites(data.invites);
             }
             if (responsesRes.ok) {
                 const data = await responsesRes.json();
@@ -218,6 +226,33 @@ export function SupplierEngagement({ canManage }: SupplierEngagementProps) {
     const hasOtherCategory = selectedCategories.includes("other");
 
     const sortedSuppliers = sortSuppliersByPriority(suppliers);
+
+    const openResponseDetail = (response: QuestionnaireResponseRecord) => {
+        setSelectedResponse(response);
+        setDetailModalOpen(true);
+    };
+
+    const getSubmissionSummary = (response: QuestionnaireResponseRecord) => {
+        const parts: string[] = [];
+
+        if (response.carbonDisclosure) {
+            parts.push(
+                `S1 ${response.carbonDisclosure.scope1Emissions ?? "—"} · S2 ${response.carbonDisclosure.scope2Emissions ?? "—"} tCO2e`,
+            );
+        }
+        if (response.pcf) {
+            parts.push(
+                `${response.pcf.productName ?? "Product"} · ${response.pcf.cradleToGateEmissions ?? "—"} kgCO2e/u`,
+            );
+        }
+        if (response.energyUsage) {
+            parts.push(
+                `${response.energyUsage.annualElectricityKwh ?? "—"} kWh · ${response.energyUsage.renewableEnergyPercent ?? "—"}% renewable`,
+            );
+        }
+
+        return parts.join(" · ") || "—";
+    };
 
     return (
         <div className="space-y-8">
@@ -333,7 +368,6 @@ export function SupplierEngagement({ canManage }: SupplierEngagementProps) {
             <Tabs defaultValue="suppliers">
                 <TabsList>
                     <TabsTrigger value="suppliers">Suppliers ({suppliers.length})</TabsTrigger>
-                    <TabsTrigger value="invites">Invites ({invites.length})</TabsTrigger>
                     <TabsTrigger value="responses">
                         Submissions ({responses.length})
                     </TabsTrigger>
@@ -429,77 +463,6 @@ export function SupplierEngagement({ canManage }: SupplierEngagementProps) {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="invites" className="mt-4">
-                    <Card>
-                        <CardContent className="pt-6">
-                            {invites.length === 0 ? (
-                                <p className="text-muted-foreground">No invites sent yet.</p>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="border-b text-left">
-                                                <th className="pb-3 font-medium">Supplier</th>
-                                                <th className="pb-3 font-medium">Types</th>
-                                                <th className="pb-3 font-medium">Status</th>
-                                                <th className="pb-3 font-medium">Expires</th>
-                                                <th className="pb-3 font-medium">Submitted</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {invites.map((invite) => (
-                                                <tr key={invite.id} className="border-b">
-                                                    <td className="py-3">
-                                                        <div>{invite.supplierName}</div>
-                                                        <CategoryBadges
-                                                            categories={
-                                                                invite.supplierCategories
-                                                            }
-                                                            otherCategoryType={
-                                                                invite.supplierOtherCategoryType
-                                                            }
-                                                        />
-                                                    </td>
-                                                    <td className="py-3">
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {invite.questionnaireTypes.map((t) => (
-                                                                <Badge
-                                                                    key={t}
-                                                                    variant="outline"
-                                                                    className="text-xs"
-                                                                >
-                                                                    {QUESTIONNAIRE_TYPES.find(
-                                                                        (qt) => qt.value === t,
-                                                                    )?.label ?? t}
-                                                                </Badge>
-                                                            ))}
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-3">
-                                                        <StatusBadge status={invite.status} />
-                                                    </td>
-                                                    <td className="py-3 text-muted-foreground">
-                                                        {new Date(
-                                                            invite.expiresAt,
-                                                        ).toLocaleDateString()}
-                                                    </td>
-                                                    <td className="py-3 text-muted-foreground">
-                                                        {invite.submittedAt
-                                                            ? new Date(
-                                                                  invite.submittedAt,
-                                                              ).toLocaleDateString()
-                                                            : "—"}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
                 <TabsContent value="responses" className="mt-4">
                     <Card>
                         <CardContent className="pt-6">
@@ -509,18 +472,28 @@ export function SupplierEngagement({ canManage }: SupplierEngagementProps) {
                                     suppliers complete their questionnaires.
                                 </p>
                             ) : (
-                                <div className="space-y-4">
-                                    {responses.map((response) => (
-                                        <div
-                                            key={response.id}
-                                            className="rounded-lg border p-4 space-y-3"
-                                        >
-                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                                <div>
-                                                    <p className="font-semibold">
+                                <Table className="table-fixed w-full">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[22%]">Supplier</TableHead>
+                                            <TableHead className="w-[22%]">Respondent</TableHead>
+                                            <TableHead className="w-[12%] whitespace-nowrap">
+                                                Submitted
+                                            </TableHead>
+                                            <TableHead className="w-[30%]">Summary</TableHead>
+                                            <TableHead className="w-[14%] text-right">
+                                                Actions
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {responses.map((response) => (
+                                            <TableRow key={response.id}>
+                                                <TableCell className="align-top">
+                                                    <div className="font-medium truncate">
                                                         {response.supplierName}
-                                                    </p>
-                                                    <p className="text-sm text-muted-foreground">
+                                                    </div>
+                                                    <div className="mt-1">
                                                         <CategoryBadges
                                                             categories={
                                                                 response.supplierCategories
@@ -528,122 +501,52 @@ export function SupplierEngagement({ canManage }: SupplierEngagementProps) {
                                                             otherCategoryType={
                                                                 response.supplierOtherCategoryType
                                                             }
-                                                        />{" "}
-                                                        · Submitted{" "}
-                                                        {new Date(
-                                                            response.submittedAt,
-                                                        ).toLocaleDateString()}
+                                                        />
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="align-top">
+                                                    <div className="truncate font-medium">
+                                                        {response.respondentName ?? "—"}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground truncate">
+                                                        {response.respondentEmail ?? "—"}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="align-top text-muted-foreground whitespace-nowrap">
+                                                    {formatSubmissionDate(response.submittedAt)}
+                                                </TableCell>
+                                                <TableCell className="align-top">
+                                                    <p className="text-sm text-muted-foreground line-clamp-2">
+                                                        {getSubmissionSummary(response)}
                                                     </p>
-                                                </div>
-                                                <Badge>Submitted</Badge>
-                                            </div>
-                                            <p className="text-sm">
-                                                <span className="text-muted-foreground">
-                                                    Respondent:{" "}
-                                                </span>
-                                                {response.respondentName} (
-                                                {response.respondentEmail})
-                                            </p>
-                                            <div className="grid gap-3 sm:grid-cols-3 text-sm">
-                                                {response.carbonDisclosure && (
-                                                    <div className="rounded-md bg-muted/40 p-3">
-                                                        <p className="font-medium mb-1">
-                                                            Carbon Disclosure
-                                                        </p>
-                                                        <p className="text-muted-foreground">
-                                                            Scope 1:{" "}
-                                                            {String(
-                                                                (
-                                                                    response.carbonDisclosure as Record<
-                                                                        string,
-                                                                        unknown
-                                                                    >
-                                                                ).scope1Emissions ?? "—",
-                                                            )}{" "}
-                                                            tCO2e
-                                                        </p>
-                                                        <p className="text-muted-foreground">
-                                                            Scope 2:{" "}
-                                                            {String(
-                                                                (
-                                                                    response.carbonDisclosure as Record<
-                                                                        string,
-                                                                        unknown
-                                                                    >
-                                                                ).scope2Emissions ?? "—",
-                                                            )}{" "}
-                                                            tCO2e
-                                                        </p>
-                                                    </div>
-                                                )}
-                                                {response.pcf && (
-                                                    <div className="rounded-md bg-muted/40 p-3">
-                                                        <p className="font-medium mb-1">PCF</p>
-                                                        <p className="text-muted-foreground">
-                                                            Product:{" "}
-                                                            {String(
-                                                                (
-                                                                    response.pcf as Record<
-                                                                        string,
-                                                                        unknown
-                                                                    >
-                                                                ).productName ?? "—",
-                                                            )}
-                                                        </p>
-                                                        <p className="text-muted-foreground">
-                                                            Emissions:{" "}
-                                                            {String(
-                                                                (
-                                                                    response.pcf as Record<
-                                                                        string,
-                                                                        unknown
-                                                                    >
-                                                                ).cradleToGateEmissions ?? "—",
-                                                            )}{" "}
-                                                            kgCO2e/unit
-                                                        </p>
-                                                    </div>
-                                                )}
-                                                {response.energyUsage && (
-                                                    <div className="rounded-md bg-muted/40 p-3">
-                                                        <p className="font-medium mb-1">
-                                                            Energy Usage
-                                                        </p>
-                                                        <p className="text-muted-foreground">
-                                                            Electricity:{" "}
-                                                            {String(
-                                                                (
-                                                                    response.energyUsage as Record<
-                                                                        string,
-                                                                        unknown
-                                                                    >
-                                                                ).annualElectricityKwh ?? "—",
-                                                            )}{" "}
-                                                            kWh/yr
-                                                        </p>
-                                                        <p className="text-muted-foreground">
-                                                            Renewable:{" "}
-                                                            {String(
-                                                                (
-                                                                    response.energyUsage as Record<
-                                                                        string,
-                                                                        unknown
-                                                                    >
-                                                                ).renewableEnergyPercent ?? "—",
-                                                            )}
-                                                            %
-                                                        </p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                                </TableCell>
+                                                <TableCell className="align-top text-right">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() =>
+                                                            openResponseDetail(response)
+                                                        }
+                                                    >
+                                                        <Eye className="w-4 h-4 mr-1" />
+                                                        View
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
                             )}
                         </CardContent>
                     </Card>
                 </TabsContent>
             </Tabs>
+
+            <QuestionnaireResponseDetailModal
+                response={selectedResponse}
+                open={detailModalOpen}
+                onOpenChange={setDetailModalOpen}
+            />
 
             {showCreateForm && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
