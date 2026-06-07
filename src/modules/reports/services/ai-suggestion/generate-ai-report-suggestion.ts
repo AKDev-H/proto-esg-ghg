@@ -1,44 +1,17 @@
-export interface AIReportSuggestionInput {
-    totalEmissions: number;
-    scope1Emissions: number;
-    scope2Emissions: number;
-    scope3Emissions: number;
-    scope1Percentage: number;
-    scope2Percentage: number;
-    scope3Percentage: number;
-    country: "US" | "MY";
-    industryType?: string | null;
-}
-
-export interface AIReportSuggestion {
-    provider: "gemini" | "rule_based";
-    priorityScope: "Scope 1" | "Scope 2" | "Scope 3" | "Balanced";
-    priorityLevel: "Low" | "Medium" | "High";
-    finalValues: {
-        totalEmissionsTon: string;
-        scope1EmissionsTon: string;
-        scope2EmissionsTon: string;
-        scope3EmissionsTon: string;
-    };
-    suggestion: string;
-}
-
-type GeminiResponse = {
-    candidates?: Array<{
-        content?: {
-            parts?: Array<{ text?: string }>;
-        };
-    }>;
-};
+import type {
+    AIReportSuggestion,
+    AIReportSuggestionFallbackReason,
+    AIReportSuggestionInput,
+    GeminiResponse,
+} from "./types";
 
 function toTonnes(valueKg: number): string {
     return (valueKg / 1000).toFixed(2);
 }
 
-function getPriority(input: AIReportSuggestionInput): Pick<
-    AIReportSuggestion,
-    "priorityScope" | "priorityLevel" | "suggestion"
-> {
+function getPriority(
+    input: AIReportSuggestionInput,
+): Pick<AIReportSuggestion, "priorityScope" | "priorityLevel" | "suggestion"> {
     const scopes = [
         {
             scope: "Scope 1" as const,
@@ -78,9 +51,13 @@ function getPriority(input: AIReportSuggestionInput): Pick<
 
 function buildFallbackSuggestion(
     input: AIReportSuggestionInput,
+    fallbackReason: AIReportSuggestionFallbackReason,
 ): AIReportSuggestion {
     return {
         provider: "rule_based",
+        source: "fallback",
+        isFallback: true,
+        fallbackReason,
         ...getPriority(input),
         finalValues: {
             totalEmissionsTon: toTonnes(input.totalEmissions),
@@ -101,7 +78,7 @@ function normalizeGeminiSuggestion(
     value: unknown,
     input: AIReportSuggestionInput,
 ): AIReportSuggestion {
-    const fallback = buildFallbackSuggestion(input);
+    const fallback = buildFallbackSuggestion(input, "invalid_response");
     if (!value || typeof value !== "object") return fallback;
 
     const data = value as Partial<AIReportSuggestion>;
@@ -115,7 +92,9 @@ function normalizeGeminiSuggestion(
             ? parsedScope
             : fallback.priorityScope;
     const priorityLevel: AIReportSuggestion["priorityLevel"] =
-        parsedLevel === "Low" || parsedLevel === "Medium" || parsedLevel === "High"
+        parsedLevel === "Low" ||
+        parsedLevel === "Medium" ||
+        parsedLevel === "High"
             ? parsedLevel
             : fallback.priorityLevel;
     const suggestion =
@@ -126,6 +105,9 @@ function normalizeGeminiSuggestion(
     return {
         ...fallback,
         provider: "gemini",
+        source: "ai",
+        isFallback: false,
+        fallbackReason: undefined,
         priorityScope,
         priorityLevel,
         suggestion,
@@ -136,9 +118,9 @@ export async function generateAIReportSuggestion(
     input: AIReportSuggestionInput,
 ): Promise<AIReportSuggestion> {
     const apiKey = process.env.GEMINI_API_KEY;
-    const model = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
+    const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
 
-    if (!apiKey) return buildFallbackSuggestion(input);
+    if (!apiKey) return buildFallbackSuggestion(input, "missing_api_key");
 
     const payload = {
         totalEmissionsTon: toTonnes(input.totalEmissions),
@@ -154,7 +136,8 @@ export async function generateAIReportSuggestion(
 
     const prompt = `You are an ESG/GHG reporting assistant for a manufacturing carbon accounting platform.
 Use only the final aggregate emissions values below. Do not infer, mention, or request detailed activity data, suppliers, facilities, category records, or raw measurements.
-Return concise JSON only with this exact shape:
+Return a raw JSON object only. Do not include markdown, code fences, or explanatory text.
+Use this exact shape:
 {
   "priorityScope": "Scope 1" | "Scope 2" | "Scope 3" | "Balanced",
   "priorityLevel": "Low" | "Medium" | "High",
@@ -173,22 +156,43 @@ ${JSON.stringify(payload, null, 2)}`;
                 body: JSON.stringify({
                     generationConfig: {
                         temperature: 0.2,
-                        maxOutputTokens: 220,
+                        maxOutputTokens: 600,
                         responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                priorityScope: {
+                                    type: "STRING",
+                                    enum: ["Scope 1", "Scope 2", "Scope 3", "Balanced"],
+                                },
+                                priorityLevel: {
+                                    type: "STRING",
+                                    enum: ["Low", "Medium", "High"],
+                                },
+                                suggestion: { type: "STRING" },
+                            },
+                            required: ["priorityScope", "priorityLevel", "suggestion"],
+                        },
+                        thinkingConfig: { thinkingBudget: 0 },
                     },
                     contents: [{ parts: [{ text: prompt }] }],
                 }),
             },
         );
 
-        if (!response.ok) return buildFallbackSuggestion(input);
+        if (!response.ok)
+            return buildFallbackSuggestion(input, "request_failed");
 
         const geminiResponse = (await response.json()) as GeminiResponse;
         const text = geminiResponse.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) return buildFallbackSuggestion(input);
+        if (!text) return buildFallbackSuggestion(input, "empty_response");
 
-        return normalizeGeminiSuggestion(extractJson(text), input);
+        try {
+            return normalizeGeminiSuggestion(extractJson(text), input);
+        } catch {
+            return buildFallbackSuggestion(input, "invalid_response");
+        }
     } catch {
-        return buildFallbackSuggestion(input);
+        return buildFallbackSuggestion(input, "request_failed");
     }
 }

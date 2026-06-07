@@ -22,6 +22,10 @@ import {
     Trash2,
     LayoutDashboard,
     FileSpreadsheet,
+    Sparkles,
+    BrainCircuit,
+    ShieldCheck,
+    Zap,
 } from "lucide-react";
 import { generateYearOptions } from "@/lib/utils";
 import { ReportsCard } from "./ReportsCard";
@@ -369,6 +373,49 @@ export function ReportsList({
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold">Reports</h1>
             </div>
+
+            <section className="relative overflow-hidden rounded-3xl border bg-slate-950 p-6 text-white shadow-xl shadow-emerald-950/10 sm:p-8">
+                <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-400/20 blur-3xl" />
+                <div className="absolute bottom-0 left-1/3 h-32 w-32 rounded-full bg-indigo-400/20 blur-3xl" />
+
+                <div className="relative grid gap-6 lg:grid-cols-[1.5fr_1fr] lg:items-center">
+                    <div className="space-y-4">
+                        <Badge className="border-emerald-300/30 bg-emerald-400/15 text-emerald-100 hover:bg-emerald-400/15">
+                            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                            AI-powered reporting
+                        </Badge>
+                        <div className="space-y-2">
+                            <h2 className="max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl">
+                                Turn emissions data into board-ready ESG insight.
+                            </h2>
+                            <p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
+                                Each generated report can include Gemini-assisted improvement suggestions, priority scope detection, and rule-based fallback when AI is unavailable.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                        <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+                            <div className="flex items-center gap-3">
+                                <BrainCircuit className="h-5 w-5 text-emerald-300" />
+                                <span className="text-sm font-medium">Smart recommendations</span>
+                            </div>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+                            <div className="flex items-center gap-3">
+                                <Zap className="h-5 w-5 text-amber-300" />
+                                <span className="text-sm font-medium">Priority scope focus</span>
+                            </div>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+                            <div className="flex items-center gap-3">
+                                <ShieldCheck className="h-5 w-5 text-sky-300" />
+                                <span className="text-sm font-medium">Fallback-safe output</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
             {canGenerateReports ? (
                 <Tabs defaultValue="dashboard">

@@ -20,7 +20,7 @@ import {
 } from "recharts"
 import { X, Download, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Leaf, Sparkles } from "lucide-react"
 import type { GHGActionPlan } from "@/modules/reports/services/generate-ghg-action-plan"
-import type { AIReportSuggestion } from "@/modules/reports/services/generate-ai-report-suggestion"
+import type { AIReportSuggestion } from "@/modules/reports/services/ai-suggestion"
 
 const COLORS = {
     scope1: "#ef4444",
@@ -268,9 +268,14 @@ export function ReportDetailModal({ reportId, onClose, onDownload }: ReportDetai
                                         </p>
                                     </div>
                                     {aiSuggestion && (
-                                        <Badge variant={aiSuggestion.priorityLevel === "High" ? "destructive" : "secondary"}>
-                                            {aiSuggestion.priorityLevel} Priority
-                                        </Badge>
+                                        <div className="flex flex-wrap justify-end gap-2">
+                                            <Badge variant={aiSuggestion.isFallback ? "outline" : "secondary"}>
+                                                {aiSuggestion.isFallback ? "Rule-based fallback" : "Gemini AI"}
+                                            </Badge>
+                                            <Badge variant={aiSuggestion.priorityLevel === "High" ? "destructive" : "secondary"}>
+                                                {aiSuggestion.priorityLevel} Priority
+                                            </Badge>
+                                        </div>
                                     )}
                                 </div>
 
@@ -302,6 +307,11 @@ export function ReportDetailModal({ reportId, onClose, onDownload }: ReportDetai
                                                 Improvement focus: {aiSuggestion.priorityScope}
                                             </p>
                                             <p className="text-sm text-slate-700 mt-2">{aiSuggestion.suggestion}</p>
+                                            {aiSuggestion.isFallback && aiSuggestion.fallbackReason && (
+                                                <p className="text-xs text-muted-foreground mt-2">
+                                                    AI unavailable: {aiSuggestion.fallbackReason.replace(/_/g, " ")}.
+                                                </p>
+                                            )}
                                         </>
                                     ) : (
                                         <p className="text-sm text-muted-foreground">AI suggestion unavailable.</p>

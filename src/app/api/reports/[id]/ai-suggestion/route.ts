@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildSummaryForReport } from "@/modules/reports/services/build-summary-for-report";
-import { generateAIReportSuggestion } from "@/modules/reports/services/generate-ai-report-suggestion";
+import { generateAIReportSuggestion } from "@/modules/reports/services/ai-suggestion";
 
 export async function GET(
     request: NextRequest,
