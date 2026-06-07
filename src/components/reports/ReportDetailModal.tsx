@@ -18,8 +18,9 @@ import {
     ResponsiveContainer,
     Legend,
 } from "recharts"
-import { X, Download, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Leaf } from "lucide-react"
+import { X, Download, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Leaf, Sparkles } from "lucide-react"
 import type { GHGActionPlan } from "@/modules/reports/services/generate-ghg-action-plan"
+import type { AIReportSuggestion } from "@/modules/reports/services/generate-ai-report-suggestion"
 
 const COLORS = {
     scope1: "#ef4444",
@@ -59,20 +60,44 @@ interface ReportData {
 
 export function ReportDetailModal({ reportId, onClose, onDownload }: ReportDetailModalProps) {
     const [data, setData] = useState<ReportData | null>(null)
+    const [aiSuggestion, setAiSuggestion] = useState<AIReportSuggestion | null>(null)
+    const [aiLoading, setAiLoading] = useState(true)
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState("summary")
 
     useEffect(() => {
+        let cancelled = false
+
         fetch(`/api/reports/${reportId}`)
             .then((res) => res.json())
             .then((responseData) => {
+                if (cancelled) return
                 setData(responseData)
                 setLoading(false)
             })
-            .catch(() => setLoading(false))
+            .catch(() => {
+                if (cancelled) return
+                setLoading(false)
+            })
+
+        fetch(`/api/reports/${reportId}/ai-suggestion`)
+            .then((res) => res.json())
+            .then((responseData) => {
+                if (cancelled) return
+                setAiSuggestion(responseData.suggestion ?? null)
+                setAiLoading(false)
+            })
+            .catch(() => {
+                if (cancelled) return
+                setAiLoading(false)
+            })
+
+        return () => {
+            cancelled = true
+        }
     }, [reportId])
 
-    if (loading) {
+    if (loading || data?.id !== reportId) {
         return (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                 <Card className="w-full max-w-4xl m-4">
@@ -228,6 +253,59 @@ export function ReportDetailModal({ reportId, onClose, onDownload }: ReportDetai
                                             style={{ width: `${Math.min((data.summary.activityCount / 50) * 100, 100)}%` }}
                                         />
                                     </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-gradient-to-br from-indigo-50 via-white to-emerald-50 border border-indigo-100 rounded-xl p-6">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <h3 className="font-semibold text-lg flex items-center gap-2">
+                                            <Sparkles className="w-5 h-5 text-indigo-600" />
+                                            AI Reporting Suggestion
+                                        </h3>
+                                        <p className="text-sm text-muted-foreground mt-1">
+                                            Uses final aggregate Scope 1, 2, and 3 values only.
+                                        </p>
+                                    </div>
+                                    {aiSuggestion && (
+                                        <Badge variant={aiSuggestion.priorityLevel === "High" ? "destructive" : "secondary"}>
+                                            {aiSuggestion.priorityLevel} Priority
+                                        </Badge>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+                                    <div className="bg-white/80 border rounded-lg p-3">
+                                        <p className="text-xs text-muted-foreground">Total</p>
+                                        <p className="font-bold">{aiSuggestion?.finalValues.totalEmissionsTon ?? data.summary.totalEmissionsTon} tCO₂e</p>
+                                    </div>
+                                    <div className="bg-white/80 border rounded-lg p-3">
+                                        <p className="text-xs text-muted-foreground">Scope 1</p>
+                                        <p className="font-bold text-red-700">{aiSuggestion?.finalValues.scope1EmissionsTon ?? scope1Data.emissionsTon} tCO₂e</p>
+                                    </div>
+                                    <div className="bg-white/80 border rounded-lg p-3">
+                                        <p className="text-xs text-muted-foreground">Scope 2</p>
+                                        <p className="font-bold text-amber-700">{aiSuggestion?.finalValues.scope2EmissionsTon ?? scope2Data.emissionsTon} tCO₂e</p>
+                                    </div>
+                                    <div className="bg-white/80 border rounded-lg p-3">
+                                        <p className="text-xs text-muted-foreground">Scope 3</p>
+                                        <p className="font-bold text-violet-700">{aiSuggestion?.finalValues.scope3EmissionsTon ?? scope3Data.emissionsTon} tCO₂e</p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-5 p-4 bg-white/80 border rounded-lg">
+                                    {aiLoading ? (
+                                        <p className="text-sm text-muted-foreground">Generating AI suggestion...</p>
+                                    ) : aiSuggestion ? (
+                                        <>
+                                            <p className="text-sm font-medium text-indigo-900">
+                                                Improvement focus: {aiSuggestion.priorityScope}
+                                            </p>
+                                            <p className="text-sm text-slate-700 mt-2">{aiSuggestion.suggestion}</p>
+                                        </>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">AI suggestion unavailable.</p>
+                                    )}
                                 </div>
                             </div>
 

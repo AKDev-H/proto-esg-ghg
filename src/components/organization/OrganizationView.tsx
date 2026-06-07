@@ -8,13 +8,22 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Settings, Building2, Users, Pencil, Save, X } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Settings, Building2, Users, Pencil, Save, X, Calculator } from "lucide-react";
 import type { OrganizationUser } from "@/modules/organizations/types";
 import { canManageOrgSettings } from "@/lib/permissions";
 
@@ -145,15 +154,117 @@ export function OrganizationView({
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold">Organization Settings</h1>
-                {canEdit && !isEditing && (
-                    <Button
-                        variant="outline"
-                        onClick={() => setIsEditing(true)}
-                    >
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Edit
-                    </Button>
-                )}
+                <div className="flex items-center gap-2">
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="outline">
+                                <Calculator className="w-4 h-4 mr-2" />
+                                Calculation Formulae
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="md:max-w-2xl">
+                            <DialogHeader>
+                                <DialogTitle>Calculation Formulae</DialogTitle>
+                                <DialogDescription>
+                                    Emissions are calculated from converted activity values and the selected emission factor. Final results are stored as kgCO2e.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <Tabs defaultValue="scope1" className="mt-2">
+                                <TabsList className="h-auto w-full justify-start rounded-none border-b bg-transparent p-0">
+                                    <TabsTrigger
+                                        value="scope1"
+                                        className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-2 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                                    >
+                                        Scope 1
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="scope2"
+                                        className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-2 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                                    >
+                                        Scope 2
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="scope3"
+                                        className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-2 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                                    >
+                                        Scope 3
+                                    </TabsTrigger>
+                                </TabsList>
+
+                                <TabsContent value="scope1" className="mt-5 space-y-4">
+                                    <div className="rounded-lg border bg-muted/30 p-4">
+                                        <p className="text-sm text-muted-foreground">Main formula</p>
+                                        <p className="mt-1 font-mono text-sm font-semibold">
+                                            Scope 1 Emissions = Converted Activity Value × Scope 1 Emission Factor
+                                        </p>
+                                    </div>
+                                    <div className="space-y-3 text-sm">
+                                        <p>
+                                            <span className="font-medium">Vehicle fuel:</span> Fuel consumed in liters × fuel emission factor
+                                        </p>
+                                        <p>
+                                            <span className="font-medium">Stationary combustion:</span> Fuel consumed in liters × fuel emission factor
+                                        </p>
+                                        <p>
+                                            <span className="font-medium">Refrigerants:</span> Refrigerant quantity in kg × refrigerant GWP factor
+                                        </p>
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="scope2" className="mt-5 space-y-4">
+                                    <div className="rounded-lg border bg-muted/30 p-4">
+                                        <p className="text-sm text-muted-foreground">Main formula</p>
+                                        <p className="mt-1 font-mono text-sm font-semibold">
+                                            Scope 2 Emissions = Electricity Consumption × Grid Emission Factor
+                                        </p>
+                                    </div>
+                                    <div className="space-y-3 text-sm">
+                                        <p>
+                                            <span className="font-medium">Purchased electricity:</span> Electricity consumed in kWh × country or grid emission factor
+                                        </p>
+                                        <p>
+                                            Input units such as MWh or MJ are converted to kWh before the emission factor is applied.
+                                        </p>
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="scope3" className="mt-5 space-y-4">
+                                    <div className="rounded-lg border bg-muted/30 p-4">
+                                        <p className="text-sm text-muted-foreground">Main formula</p>
+                                        <p className="mt-1 font-mono text-sm font-semibold">
+                                            Scope 3 Emissions = Converted Activity Value × Scope 3 Category Emission Factor
+                                        </p>
+                                    </div>
+                                    <div className="space-y-3 text-sm">
+                                        <p>
+                                            <span className="font-medium">Purchased goods:</span> Material quantity in kg × material emission factor
+                                        </p>
+                                        <p>
+                                            <span className="font-medium">Transportation:</span> Weight × distance × transport emission factor
+                                        </p>
+                                        <p>
+                                            <span className="font-medium">Product use:</span> Annual energy × lifetime × units sold × electricity factor
+                                        </p>
+                                        <p>
+                                            <span className="font-medium">End-of-life:</span> Waste quantity × disposal emission factor
+                                        </p>
+                                    </div>
+                                </TabsContent>
+                            </Tabs>
+                        </DialogContent>
+                    </Dialog>
+
+                    {canEdit && !isEditing && (
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsEditing(true)}
+                        >
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Edit
+                        </Button>
+                    )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
