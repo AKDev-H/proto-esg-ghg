@@ -148,6 +148,7 @@ export async function POST(request: NextRequest) {
                 { status: 400 },
             );
         }
+        console.error("Failed to complete Excel upload", error);
         return NextResponse.json(
             { error: "Failed to complete upload" },
             { status: 500 },

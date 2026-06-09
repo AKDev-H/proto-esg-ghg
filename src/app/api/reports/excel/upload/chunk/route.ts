@@ -40,7 +40,8 @@ export async function POST(request: NextRequest) {
         await saveUploadChunk(uploadId, chunkIndex, buffer);
 
         return NextResponse.json({ ok: true, chunkIndex });
-    } catch {
+    } catch (error) {
+        console.error("Failed to save Excel upload chunk", error);
         return NextResponse.json({ error: "Failed to save chunk" }, { status: 500 });
     }
 }

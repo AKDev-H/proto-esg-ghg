@@ -1,4 +1,5 @@
 import fs from "fs/promises";
+import os from "os";
 import path from "path";
 import zlib from "zlib";
 import { promisify } from "util";
@@ -6,7 +7,11 @@ import { promisify } from "util";
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
 
-export const STORAGE_ROOT = path.join(process.cwd(), "storage");
+export const STORAGE_ROOT =
+    process.env.EXCEL_IMPORT_STORAGE_ROOT ||
+    (process.env.VERCEL
+        ? path.join(os.tmpdir(), "esg-ghg-storage")
+        : path.join(process.cwd(), "storage"));
 const UPLOAD_TMP = path.join(STORAGE_ROOT, "uploads", "tmp");
 
 export async function ensureStorageDirs() {
