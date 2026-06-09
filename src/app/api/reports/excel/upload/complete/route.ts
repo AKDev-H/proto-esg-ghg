@@ -103,7 +103,12 @@ export async function POST(request: NextRequest) {
                     scope1Emissions: summary.scope1Emissions,
                     scope2Emissions: summary.scope2Emissions,
                     scope3Emissions: summary.scope3Emissions,
+                    scope1Percentage: summary.scope1Percentage,
+                    scope2Percentage: summary.scope2Percentage,
+                    scope3Percentage: summary.scope3Percentage,
                     activityCount: summary.activityCount,
+                    scope3Categories: summary.scope3Categories,
+                    topActivities: summary.topActivities,
                 } satisfies Prisma.InputJsonObject,
             },
         });

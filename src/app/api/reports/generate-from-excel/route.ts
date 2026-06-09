@@ -3,12 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canGenerateReports } from "@/lib/permissions";
-import { readStoredExcel } from "@/lib/excel-import/storage";
-import {
-    excelActivitiesToSummaryInput,
-    parseGhgExcelWorkbook,
-} from "@/modules/reports/excel/parser";
-import { buildReportSummaryFromActivities } from "@/modules/reports/services/build-report-summary";
+import { buildSummaryForExcelImport } from "@/modules/reports/services/build-summary-for-report";
 import { generateESGSummaryPDF } from "@/modules/reports/components/ESGSummaryReport";
 
 const bodySchema = z.object({
@@ -49,23 +44,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Organization not found" }, { status: 404 });
         }
 
-        const buffer = await readStoredExcel(excelImport.filePath);
-        const parsed = parseGhgExcelWorkbook(buffer);
-
-        if (parsed.errors.length > 0) {
-            return NextResponse.json(
-                { error: "Stored Excel file is invalid", details: parsed.errors },
-                { status: 400 },
-            );
-        }
-
-        const summary = buildReportSummaryFromActivities(
-            excelActivitiesToSummaryInput(parsed.activities),
+        const summary = await buildSummaryForExcelImport(
+            excelImport,
             organization.country,
             organization.industryType,
         );
 
-        const year = reportingYear ?? excelImport.reportingYear ?? parsed.meta.reportingYear;
+        const year = reportingYear ?? excelImport.reportingYear;
 
         const reportData = {
             organization: {
@@ -140,6 +125,7 @@ export async function POST(request: NextRequest) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
+        console.error("Failed to generate report from Excel", error);
         return NextResponse.json({ error: "Failed to generate report" }, { status: 500 });
     }
 }
