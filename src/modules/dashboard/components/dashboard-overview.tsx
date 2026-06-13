@@ -31,6 +31,7 @@ import {
   EnergyMixChart,
   ReductionTargetProgress,
 } from "./index"
+import { DashboardChatbot } from "./dashboard-chatbot"
 
 interface MetricInfo {
   value: number
@@ -794,6 +795,8 @@ export function DashboardOverview() {
         <Badge variant="secondary">Reporting year {year}</Badge>
         <Badge variant="secondary" className="capitalize">Industry: {data?.organization?.name ? "Metal & Machinery" : "Manufacturing"}</Badge>
       </div>
+
+      {data && <DashboardChatbot dashboardData={data} />}
     </section>
   )
 }

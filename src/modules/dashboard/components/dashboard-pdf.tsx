@@ -182,6 +182,11 @@ interface PDFData {
         reportingStatus: string;
     };
     totalTonCO2e: number;
+    byScope: {
+        scope1: number;
+        scope2: number;
+        scope3: number;
+    };
     metrics: {
         emissions: { value: number; unit: string; yoy: { text: string; isIncrease: boolean } };
         intensity: { value: number; unit: string; yoy: { text: string; isIncrease: boolean } };

@@ -443,6 +443,7 @@ export async function GET(request: NextRequest) {
                 reportingStatus,
             },
             totalTonCO2e: Math.round(currentStats.totalTonCO2e * 100) / 100,
+            byScope: currentStats.byScope,
             metrics: {
                 emissions: {
                     value: currentStats.totalTonCO2e,
@@ -523,7 +524,7 @@ export async function GET(request: NextRequest) {
         };
 
         // Render PDF to stream, convert to blob, then to buffer and base64
-        const doc = React.createElement(DashboardPDFDocument, { data: pdfData });
+        const doc = React.createElement(DashboardPDFDocument, { data: pdfData }) as any;
         const pdfBlob = await pdf(doc).toBlob();
         const arrayBuffer = await pdfBlob.arrayBuffer();
         const pdfBase64 = Buffer.from(arrayBuffer).toString("base64");
