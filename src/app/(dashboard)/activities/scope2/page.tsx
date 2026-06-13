@@ -1,4 +1,5 @@
 import { Scope2Form } from "@/components/scope2/Scope2Form";
+import { SeeFormulaeModal } from "@/components/calculations/SeeFormulaeModal";
 import {
     ScopeActivitiesSection,
     ScopeFormSection,
@@ -32,9 +33,12 @@ export default async function Scope2Page({ searchParams }: Props) {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-bold">
-                Scope 2: Indirect Energy Emissions
-            </h1>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <h1 className="text-3xl font-bold">
+                    Scope 2: Indirect Energy Emissions
+                </h1>
+                <SeeFormulaeModal scope="scope2" />
+            </div>
 
             {showActivityForm && (
                 <ScopeFormSection title="Add Electricity Consumption">

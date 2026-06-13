@@ -19,7 +19,7 @@ import { EmissionsPreview } from "@/modules/emission-factors/components/emission
 import { useCreateActivityForm } from "@/modules/activities/hooks/use-create-activity-form";
 import type { EmissionFactorOption } from "@/modules/activities/types";
 import type { VehicleFormData, StationaryFormData, RefrigerantFormData } from "@/modules/scope1/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Subtype = "vehicles" | "stationary" | "refrigerants";
 
@@ -28,17 +28,19 @@ interface Scope1FormProps {
     onSuccess?: () => void;
 }
 
-function getFactorsForSubtype(factors: EmissionFactorOption[], subtype: Subtype) {
-    const activityTypeMap: Record<Subtype, string[]> = {
-        vehicles: ["gasoline", "diesel"],
-        stationary: ["natural_gas", "diesel", "gasoline"],
-        refrigerants: [],
-    };
-    const validTypes = activityTypeMap[subtype];
-    if (!validTypes.length) return factors;
-    return factors.filter((f) =>
-        validTypes.some((v) => f.activityType.toLowerCase().includes(v)),
+function matchFactors(
+    factors: EmissionFactorOption[],
+    selectedType: string,
+): EmissionFactorOption[] {
+    if (!selectedType) return [];
+    return factors.filter(
+        (f) => f.activityType.toLowerCase() === selectedType.toLowerCase(),
     );
+}
+
+function pickFactor(factors: EmissionFactorOption[], selectedType: string) {
+    const matched = matchFactors(factors, selectedType);
+    return matched.length === 1 ? matched[0].id : "";
 }
 
 export function Scope1Form({ factors, onSuccess }: Scope1FormProps) {
@@ -59,7 +61,42 @@ export function Scope1Form({ factors, onSuccess }: Scope1FormProps) {
         resolver: zodResolver(refrigerantSchema),
     });
 
-    const subtypeFactors = getFactorsForSubtype(factors, subtype);
+    const watchedVehicleFuel = vehicleForm.watch("fuelType");
+    const watchedStationaryFuel = stationaryForm.watch("fuelType");
+    const watchedRefrigerantType = refrigerantForm.watch("refrigerantType");
+
+    const vehicleFactors = matchFactors(factors, watchedVehicleFuel);
+    const stationaryFactors = matchFactors(factors, watchedStationaryFuel);
+    const refrigerantFactors = matchFactors(factors, watchedRefrigerantType);
+
+    let subtypeFactors: EmissionFactorOption[];
+    switch (subtype) {
+        case "vehicles":
+            subtypeFactors = vehicleFactors;
+            break;
+        case "stationary":
+            subtypeFactors = stationaryFactors;
+            break;
+        case "refrigerants":
+            subtypeFactors = refrigerantFactors;
+            break;
+    }
+
+    // Auto-match factor when fuel/refrigerant type changes
+    useEffect(() => {
+        const id = pickFactor(factors, watchedVehicleFuel);
+        vehicleForm.setValue("emissionFactorId", id as any);
+    }, [watchedVehicleFuel]);
+
+    useEffect(() => {
+        const id = pickFactor(factors, watchedStationaryFuel);
+        stationaryForm.setValue("emissionFactorId", id as any);
+    }, [watchedStationaryFuel]);
+
+    useEffect(() => {
+        const id = pickFactor(factors, watchedRefrigerantType);
+        refrigerantForm.setValue("emissionFactorId", id as any);
+    }, [watchedRefrigerantType]);
 
     const handleVehicleSubmit = async (data: VehicleFormData) => {
         const ok = await submit(

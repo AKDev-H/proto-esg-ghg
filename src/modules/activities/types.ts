@@ -5,6 +5,8 @@ export interface EmissionFactorOption {
     activityType: string;
     factorValue: number;
     activityUnit: string;
+    source: string;
+    country: string;
     scope3Category?: string | null;
 }
 

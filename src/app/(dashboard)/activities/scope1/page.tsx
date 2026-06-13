@@ -1,4 +1,5 @@
 import { Scope1Form } from "@/components/scope1/Scope1Form";
+import { SeeFormulaeModal } from "@/components/calculations/SeeFormulaeModal";
 import {
     ScopeActivitiesSection,
     ScopeFormSection,
@@ -32,7 +33,10 @@ export default async function Scope1Page({ searchParams }: Props) {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-bold">Scope 1: Direct Emissions</h1>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <h1 className="text-3xl font-bold">Scope 1: Direct Emissions</h1>
+                <SeeFormulaeModal scope="scope1" />
+            </div>
 
             {showActivityForm && (
                 <ScopeFormSection title="Add Activity">

@@ -9,6 +9,7 @@ import { FactorsCard } from "./FactorsCard"
 import { FactorsForm } from "./FactorsForm"
 import { SCOPE3_CATEGORY_LABELS } from "@/lib/constants"
 import type { EmissionFactor } from "@/modules/emission-factors/types"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 function formatCategory(category: string, scope3Category?: string): string {
     if (category === "scope3" && scope3Category) {
@@ -32,14 +33,27 @@ interface FactorsTableClientProps {
     factors: EmissionFactor[]
     pagination: PaginationInfo
     canManageFactors?: boolean
+    sources: string[]
+    units: string[]
 }
 
-export function FactorsTableClient({ factors, pagination, canManageFactors = false }: FactorsTableClientProps) {
+export function FactorsTableClient({ 
+    factors, 
+    pagination, 
+    canManageFactors = false,
+    sources = [],
+    units = []
+}: FactorsTableClientProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [editingFactor, setEditingFactor] = useState<EmissionFactor | null>(null)
 
     const filterCategory = searchParams.get("category") || "all"
+    const filterSource = searchParams.get("source") || "all"
+    const filterCountry = searchParams.get("country") || "all"
+    const filterScope3Category = searchParams.get("scope3Category") || "all"
+    const filterUnit = searchParams.get("unit") || "all"
+
     const columnCount = canManageFactors ? 8 : 7
 
     const handlePageChange = (page: number) => {
@@ -54,8 +68,31 @@ export function FactorsTableClient({ factors, pagination, canManageFactors = fal
             params.delete("category")
         } else {
             params.set("category", category)
+            if (category === "scope1" || category === "scope2") {
+                params.delete("scope3Category")
+            }
         }
         params.set("page", "1")
+        router.push(`/factors?${params.toString()}`)
+    }
+
+    const handleFilterChange = (key: string, value: string) => {
+        const params = new URLSearchParams(searchParams.toString())
+        if (value === "all") {
+            params.delete(key)
+        } else {
+            params.set(key, value)
+        }
+        params.set("page", "1")
+        router.push(`/factors?${params.toString()}`)
+    }
+
+    const handleResetFilters = () => {
+        const params = new URLSearchParams()
+        const currentCategory = searchParams.get("category")
+        if (currentCategory && currentCategory !== "all") {
+            params.set("category", currentCategory)
+        }
         router.push(`/factors?${params.toString()}`)
     }
 
@@ -74,19 +111,103 @@ export function FactorsTableClient({ factors, pagination, canManageFactors = fal
 
     const paginationInfo = pagination || { page: 1, limit: 10, total: 0, totalPages: 1 }
 
+    const isAnyFilterActive = filterSource !== "all" || filterCountry !== "all" || filterScope3Category !== "all" || filterUnit !== "all"
+
     return (
         <div className="space-y-4">
-            <div className="flex gap-2">
-                {["all", "scope1", "scope2", "scope3"].map((cat) => (
-                    <Button
-                        key={cat}
-                        variant={filterCategory === cat ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleCategoryChange(cat)}
-                    >
-                        {cat === "all" ? "All" : formatCategory(cat)}
-                    </Button>
-                ))}
+            <div className="flex flex-col gap-4 bg-card p-4 rounded-lg border shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                    <div className="flex flex-wrap gap-2">
+                        {["all", "scope1", "scope2", "scope3"].map((cat) => (
+                            <Button
+                                key={cat}
+                                variant={filterCategory === cat ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handleCategoryChange(cat)}
+                            >
+                                {cat === "all" ? "All" : formatCategory(cat)}
+                            </Button>
+                        ))}
+                    </div>
+                    {canManageFactors && (
+                        <FactorsForm editFactor={editingFactor} onCancelEdit={handleCancelEdit} onSuccess={handleSuccess} />
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t">
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Country</label>
+                        <Select value={filterCountry} onValueChange={(val) => handleFilterChange("country", val)}>
+                            <SelectTrigger className="h-9">
+                                <SelectValue placeholder="All Countries" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Countries</SelectItem>
+                                <SelectItem value="US">United States</SelectItem>
+                                <SelectItem value="MY">Malaysia</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Source</label>
+                        <Select value={filterSource} onValueChange={(val) => handleFilterChange("source", val)}>
+                            <SelectTrigger className="h-9">
+                                <SelectValue placeholder="All Sources" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Sources</SelectItem>
+                                {sources.map((src) => (
+                                    <SelectItem key={src} value={src}>{src}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Scope 3 Category</label>
+                        <Select 
+                            value={filterScope3Category} 
+                            onValueChange={(val) => handleFilterChange("scope3Category", val)}
+                            disabled={filterCategory === "scope1" || filterCategory === "scope2"}
+                        >
+                            <SelectTrigger className="h-9">
+                                <SelectValue placeholder="All Categories" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Categories</SelectItem>
+                                {Object.entries(SCOPE3_CATEGORY_LABELS).map(([key, label]) => (
+                                    <SelectItem key={key} value={key}>
+                                        {label.replace(/^\d+\.\s*/, "")}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Unit</label>
+                        <Select value={filterUnit} onValueChange={(val) => handleFilterChange("unit", val)}>
+                            <SelectTrigger className="h-9">
+                                <SelectValue placeholder="All Units" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Units</SelectItem>
+                                {units.map((unit) => (
+                                    <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                {isAnyFilterActive && (
+                    <div className="flex justify-end pt-2">
+                        <Button variant="ghost" size="sm" onClick={handleResetFilters} className="text-muted-foreground h-8 text-xs hover:text-foreground">
+                            Clear Filters
+                        </Button>
+                    </div>
+                )}
             </div>
 
             <div className="hidden md:block">
@@ -178,9 +299,6 @@ export function FactorsTableClient({ factors, pagination, canManageFactors = fal
                 )}
             </div>
             <FactorsCard factors={factors} onEdit={canManageFactors ? handleEdit : undefined} />
-            {canManageFactors && (
-                <FactorsForm editFactor={editingFactor} onCancelEdit={handleCancelEdit} onSuccess={handleSuccess} />
-            )}
         </div>
     )
 }

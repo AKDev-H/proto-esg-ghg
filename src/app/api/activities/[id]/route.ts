@@ -32,9 +32,17 @@ export async function GET(
                 scope1Refrigerants: true,
                 scope2Electricity: true,
                 scope3PurchasedGoods: true,
+                scope3CapitalGoods: true,
+                scope3FuelEnergy: true,
                 scope3Transportation: true,
+                scope3Waste: true,
+                scope3BusinessTravel: true,
+                scope3EmployeeCommuting: true,
+                scope3UpstreamLeased: true,
+                scope3ProductProcessing: true,
                 scope3ProductUse: true,
                 scope3EndOfLife: true,
+                scope3DownstreamLeased: true,
                 approvalRequests: {
                     include: {
                         requestedBy: { select: { id: true, name: true } },
@@ -151,30 +159,145 @@ export async function PUT(
             updateData.scope3PurchasedGoods = {
                 deleteMany: {},
                 create: {
-                    ...purchasedGoodsData,
+                    materialType: purchasedGoodsData.materialType,
+                    quantity: Number(purchasedGoodsData.quantity),
+                    unit: purchasedGoodsData.unit,
                     supplierId: purchasedGoodsData.supplier || purchasedGoodsData.supplierId || null,
                     supplierCountry: purchasedGoodsData.supplierCountry || null,
                 },
             };
         }
+        if (body.scope3CapitalGoods) {
+            const capitalGoodsData = body.scope3CapitalGoods.create || body.scope3CapitalGoods;
+            updateData.scope3CapitalGoods = {
+                deleteMany: {},
+                create: {
+                    equipmentType: capitalGoodsData.equipmentType,
+                    quantity: Number(capitalGoodsData.quantity),
+                    unit: capitalGoodsData.unit,
+                    purchaseYear: Number(capitalGoodsData.purchaseYear),
+                },
+            };
+        }
+        if (body.scope3FuelEnergy) {
+            const fuelEnergyData = body.scope3FuelEnergy.create || body.scope3FuelEnergy;
+            updateData.scope3FuelEnergy = {
+                deleteMany: {},
+                create: {
+                    fuelType: fuelEnergyData.fuelType,
+                    quantity: Number(fuelEnergyData.quantity),
+                    unit: fuelEnergyData.unit,
+                    activityDescription: fuelEnergyData.activityDescription,
+                },
+            };
+        }
         if (body.scope3Transportation) {
+            const transportData = body.scope3Transportation.create || body.scope3Transportation;
             updateData.scope3Transportation = {
                 deleteMany: {},
-                create: body.scope3Transportation.create,
+                create: {
+                    transportMode: transportData.transportMode,
+                    weight: Number(transportData.weight),
+                    distance: Number(transportData.distance),
+                    distanceUnit: transportData.distanceUnit || "km",
+                    transportCategory: transportData.transportCategory || "upstream",
+                },
+            };
+        }
+        if (body.scope3Waste) {
+            const wasteData = body.scope3Waste.create || body.scope3Waste;
+            updateData.scope3Waste = {
+                deleteMany: {},
+                create: {
+                    wasteType: wasteData.wasteType,
+                    disposalMethod: wasteData.disposalMethod,
+                    quantity: Number(wasteData.quantity),
+                    unit: wasteData.unit,
+                },
+            };
+        }
+        if (body.scope3BusinessTravel) {
+            const businessTravelData = body.scope3BusinessTravel.create || body.scope3BusinessTravel;
+            updateData.scope3BusinessTravel = {
+                deleteMany: {},
+                create: {
+                    travelType: businessTravelData.travelType,
+                    distance: Number(businessTravelData.distance || 0),
+                    numberOfTrips: Number(businessTravelData.numberOfTrips || 0),
+                    origin: businessTravelData.origin || null,
+                    destination: businessTravelData.destination || null,
+                },
+            };
+        }
+        if (body.scope3EmployeeCommuting) {
+            const employeeCommutingData = body.scope3EmployeeCommuting.create || body.scope3EmployeeCommuting;
+            updateData.scope3EmployeeCommuting = {
+                deleteMany: {},
+                create: {
+                    transportMode: employeeCommutingData.transportMode,
+                    averageDistancePerDay: Number(employeeCommutingData.averageDistancePerDay),
+                    daysPerYear: Number(employeeCommutingData.daysPerYear),
+                    numberOfEmployees: Number(employeeCommutingData.numberOfEmployees),
+                },
+            };
+        }
+        if (body.scope3UpstreamLeased) {
+            const upstreamLeasedData = body.scope3UpstreamLeased.create || body.scope3UpstreamLeased;
+            updateData.scope3UpstreamLeased = {
+                deleteMany: {},
+                create: {
+                    assetType: upstreamLeasedData.assetType,
+                    leaseType: upstreamLeasedData.leaseType,
+                    quantity: Number(upstreamLeasedData.quantity),
+                    unit: upstreamLeasedData.unit,
+                },
+            };
+        }
+        if (body.scope3ProductProcessing) {
+            const productProcessingData = body.scope3ProductProcessing.create || body.scope3ProductProcessing;
+            updateData.scope3ProductProcessing = {
+                deleteMany: {},
+                create: {
+                    productType: productProcessingData.productType,
+                    processingType: productProcessingData.processingType,
+                    quantity: Number(productProcessingData.quantity),
+                    unit: productProcessingData.unit,
+                },
             };
         }
         if (body.scope3ProductUse) {
+            const productUseData = body.scope3ProductUse.create || body.scope3ProductUse;
             updateData.scope3ProductUse = {
-                upsert: {
-                    create: body.scope3ProductUse.create,
-                    update: body.scope3ProductUse,
+                deleteMany: {},
+                create: {
+                    productType: productUseData.productType,
+                    annualEnergyKwh: Number(productUseData.annualEnergyKwh),
+                    lifetimeYears: Number(productUseData.lifetimeYears),
+                    unitsSold: Number(productUseData.unitsSold),
                 },
             };
         }
         if (body.scope3EndOfLife) {
+            const endOfLifeData = body.scope3EndOfLife.create || body.scope3EndOfLife;
             updateData.scope3EndOfLife = {
                 deleteMany: {},
-                create: body.scope3EndOfLife.create,
+                create: {
+                    disposalType: endOfLifeData.disposalType,
+                    wasteQuantity: Number(endOfLifeData.wasteQuantity),
+                    unit: endOfLifeData.unit,
+                },
+            };
+        }
+        if (body.scope3DownstreamLeased) {
+            const downstreamLeasedData = body.scope3DownstreamLeased.create || body.scope3DownstreamLeased;
+            updateData.scope3DownstreamLeased = {
+                deleteMany: {},
+                create: {
+                    productType: downstreamLeasedData.productType,
+                    leaseType: downstreamLeasedData.leaseType,
+                    quantity: Number(downstreamLeasedData.quantity),
+                    unit: downstreamLeasedData.unit,
+                },
             };
         }
 
@@ -187,6 +310,18 @@ export async function PUT(
                 scope1Stationary: true,
                 scope1Refrigerants: true,
                 scope2Electricity: true,
+                scope3PurchasedGoods: true,
+                scope3CapitalGoods: true,
+                scope3FuelEnergy: true,
+                scope3Transportation: true,
+                scope3Waste: true,
+                scope3BusinessTravel: true,
+                scope3EmployeeCommuting: true,
+                scope3UpstreamLeased: true,
+                scope3ProductProcessing: true,
+                scope3ProductUse: true,
+                scope3EndOfLife: true,
+                scope3DownstreamLeased: true,
             },
         });
 

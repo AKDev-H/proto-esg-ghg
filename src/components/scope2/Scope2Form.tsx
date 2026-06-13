@@ -2,6 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,10 @@ interface Scope2FormProps {
 export function Scope2Form({ factors, onSuccess }: Scope2FormProps) {
     const { isSubmitting, submit } = useCreateActivityForm({ onSuccess });
 
+    const electricityFactors = factors.filter(
+        (f) => f.activityType === "electricity",
+    );
+
     const form = useForm<ElectricityFormData>({
         resolver: zodResolver(electricitySchema),
         defaultValues: {
@@ -34,6 +39,12 @@ export function Scope2Form({ factors, onSuccess }: Scope2FormProps) {
             gridRegion: "",
         },
     });
+
+    useEffect(() => {
+        if (electricityFactors.length === 1) {
+            form.setValue("emissionFactorId", electricityFactors[0].id as any);
+        }
+    }, []);
 
     const onSubmit = async (data: ElectricityFormData) => {
         const ok = await submit(
@@ -98,7 +109,7 @@ export function Scope2Form({ factors, onSuccess }: Scope2FormProps) {
             </div>
 
             <EmissionFactorSelect
-                factors={factors}
+                factors={electricityFactors}
                 value={form.watch("emissionFactorId") || ""}
                 onChange={(v) => form.setValue("emissionFactorId", v)}
             />

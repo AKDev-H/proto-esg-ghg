@@ -36,7 +36,8 @@ export function EmissionFactorSelect({
                     {factors.map((factor) => (
                         <SelectItem key={factor.id} value={factor.id}>
                             {factor.activityType} - {factor.factorValue}{" "}
-                            kgCO2e/{factor.activityUnit}
+                            kgCO2e/{factor.activityUnit} ({factor.source} -{" "}
+                            {factor.country})
                         </SelectItem>
                     ))}
                 </SelectContent>

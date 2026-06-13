@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { pdf } from "@react-pdf/renderer";
+import React from "react";
+import { DashboardPDFDocument } from "@/modules/dashboard/components/dashboard-pdf";
 
 export async function GET(request: NextRequest) {
     try {
@@ -18,7 +21,10 @@ export async function GET(request: NextRequest) {
         const isSuperAdmin = session.user.role === "super_admin";
 
         if (isSuperAdmin) {
-            return NextResponse.json({ total: 0, byScope: {}, byCategory: {} });
+            return NextResponse.json(
+                { error: "Super Admins cannot export organization reports directly." },
+                { status: 400 },
+            );
         }
 
         if (!year) {
@@ -104,6 +110,56 @@ export async function GET(request: NextRequest) {
               })
             : [];
 
+        // 4. Fetch trend data (three years leading up to selected year)
+        const trendYears = [orgYearInt - 2, orgYearInt - 1, orgYearInt];
+        const trendReportingYears = await prisma.reportingYear.findMany({
+            where: {
+                year: { in: trendYears },
+                organizationId: organizationId!,
+            },
+            include: {
+                activities: {
+                    select: {
+                        scope: true,
+                        calculatedEmissions: true,
+                    },
+                },
+            },
+        });
+
+        const trendData = trendYears
+            .sort((a, b) => a - b)
+            .map((year) => {
+                const reportingYear = trendReportingYears.find((item) => item.year === year);
+                const yearActivities = reportingYear?.activities ?? [];
+
+                const totalEmissions = yearActivities.reduce(
+                    (sum, activity) => sum + (activity.calculatedEmissions ?? 0),
+                    0,
+                );
+
+                const byScope = {
+                    scope1: 0,
+                    scope2: 0,
+                    scope3: 0,
+                };
+
+                for (const activity of yearActivities) {
+                    const sc = activity.scope as keyof typeof byScope;
+                    if (sc in byScope) {
+                        byScope[sc] += activity.calculatedEmissions ?? 0;
+                    }
+                }
+
+                return {
+                    year,
+                    total: Math.round(totalEmissions),
+                    scope1: Math.round(byScope.scope1),
+                    scope2: Math.round(byScope.scope2),
+                    scope3: Math.round(byScope.scope3),
+                };
+            });
+
         // --- Helper Function: Calculate Stats for Activities ---
         const calculateStats = (actList: typeof activities) => {
             const byScope = { scope1: 0, scope2: 0, scope3: 0 };
@@ -178,8 +234,8 @@ export async function GET(request: NextRequest) {
                                 details.scope1.generators += emissions;
                                 dieselLiters += liters;
                             } else if (stat.fuelType.toLowerCase() === "natural_gas") {
-                                details.scope1.processGases += emissions; // process or furnace
-                                naturalGasM3 += qty; // standard m3
+                                details.scope1.processGases += emissions;
+                                naturalGasM3 += qty;
                             } else {
                                 details.scope1.processGases += emissions;
                             }
@@ -192,7 +248,6 @@ export async function GET(request: NextRequest) {
                     
                     // Scope 2 subcategories
                     details.scope2.gridLocal += emissions;
-                    // Mock market-based as 87% of location-based for realistic breakdown, or equal
                     details.scope2.gridMarket += emissions * 0.87;
                     
                     if (activity.scope2Electricity) {
@@ -296,7 +351,7 @@ export async function GET(request: NextRequest) {
         const orgSettings = (organization.settings as any) || {};
         const revenue = Number(orgSettings.revenueInMillions) || 4228.0;
 
-        const currentIntensity = currentStats.totalTonCO2e / (revenue / 1000); // per million (if revenue in thousands) or per unit
+        const currentIntensity = currentStats.totalTonCO2e / (revenue / 1000); // per million
         const prevIntensity = prevStats.totalTonCO2e / (revenue / 1000);
 
         // --- Supply Chain ESG Metrics ---
@@ -310,7 +365,7 @@ export async function GET(request: NextRequest) {
             where: { organizationId: organizationId! },
         });
         const uniqueInvited = invitedSuppliersGroup.length;
-        const screenedPercent = totalSuppliers > 0 ? (uniqueInvited / totalSuppliers) * 100 : 61; // fallback to seed 61%
+        const screenedPercent = totalSuppliers > 0 ? (uniqueInvited / totalSuppliers) * 100 : 61;
 
         // Signed Code of Conduct (completed questionnaires)
         const submittedInvitesGroup = await prisma.supplierQuestionnaireInvite.groupBy({
@@ -318,7 +373,7 @@ export async function GET(request: NextRequest) {
             where: { organizationId: organizationId!, status: "submitted" },
         });
         const submittedCount = submittedInvitesGroup.length;
-        const cocPercent = totalSuppliers > 0 ? (submittedCount / totalSuppliers) * 100 : 78; // fallback to seed 78%
+        const cocPercent = totalSuppliers > 0 ? (submittedCount / totalSuppliers) * 100 : 78;
 
         // High-risk audited percentage
         const highRiskSuppliers = await prisma.supplier.findMany({
@@ -333,7 +388,7 @@ export async function GET(request: NextRequest) {
         const highRiskIds = highRiskSuppliers.map((s) => s.id);
         const highRiskCount = highRiskIds.length;
         
-        let highRiskAuditedPercent = 45; // fallback
+        let highRiskAuditedPercent = 45;
         if (highRiskCount > 0) {
             const highRiskSubmittedGroup = await prisma.supplierQuestionnaireInvite.groupBy({
                 by: ["supplierId"],
@@ -378,8 +433,8 @@ export async function GET(request: NextRequest) {
             where: { organizationId: organizationId!, dataStatus: "submitted" },
         });
 
-        // --- Build response object ---
-        const responseData = {
+        // Assemble PDFData object matching the frontend expectations
+        const pdfData = {
             reportingYear: orgYearInt,
             organization: {
                 name: organization.name,
@@ -387,13 +442,7 @@ export async function GET(request: NextRequest) {
                 currency: organization.currency,
                 reportingStatus,
             },
-            total: currentStats.total,
             totalTonCO2e: Math.round(currentStats.totalTonCO2e * 100) / 100,
-            byScope: currentStats.byScope,
-            byCategory: currentStats.byCategory,
-            activityCount: activities.length,
-            
-            // 6 Top metrics card data
             metrics: {
                 emissions: {
                     value: currentStats.totalTonCO2e,
@@ -411,13 +460,11 @@ export async function GET(request: NextRequest) {
                     yoy: calculateYoY(currentStats.energy.totalGJ, prevStats.energy.totalGJ),
                 },
                 renewable: {
-                    // Estimate RE percentage from energy mix or default 22%
                     value: currentStats.energy.totalKwh > 0 ? Math.round((currentStats.energy.mix.grid / currentStats.energy.totalKwh) * 0.22 * 100) : 22,
                     unit: "% of total electricity",
                     yoy: { percent: 6, text: "↑ 6pp vs FY" + prevYearInt, isIncrease: true },
                 },
                 water: {
-                    // Water is not tracked in current columns, output a realistic estimate or mark as NA
                     value: 82300,
                     unit: "m³ / year",
                     yoy: { percent: 1.8, text: "↑ 1.8% vs FY" + prevYearInt, isIncrease: true },
@@ -428,19 +475,13 @@ export async function GET(request: NextRequest) {
                     yoy: { percent: 9, text: "↑ 9pp vs FY" + prevYearInt, isIncrease: true },
                 },
             },
-
-            // Detailed breakdowns for Scope 1, 2, 3
             details: currentStats.details,
-
-            // Energy Mix Donut Chart Data
             energyMix: [
                 { name: "Grid (TNB)", value: Math.round(currentStats.energy.mix.grid), color: "#3b82f6" },
-                { name: "Solar PV (rooftop)", value: Math.round(currentStats.energy.totalKwh * 0.08), color: "#22c55e" }, // Mocked Solar portion
+                { name: "Solar PV (rooftop)", value: Math.round(currentStats.energy.totalKwh * 0.08), color: "#22c55e" },
                 { name: "Diesel gen.", value: Math.round(currentStats.energy.mix.diesel), color: "#ef4444" },
                 { name: "Natural Gas", value: Math.round(currentStats.energy.mix.naturalGas), color: "#f59e0b" },
             ].filter(d => d.value > 0),
-
-            // Reduction targets progress
             reductionTarget: {
                 baseYear,
                 scope1: {
@@ -456,8 +497,6 @@ export async function GET(request: NextRequest) {
                     target: -25,
                 },
             },
-
-            // Social Section (Workforce)
             workforce: {
                 headcount: userCount || 12,
                 femalePercent: 38,
@@ -466,16 +505,12 @@ export async function GET(request: NextRequest) {
                 lostTimeInjuryRate: 0.42,
                 voluntaryTurnover: 9.1,
             },
-
-            // Supply Chain Section
             supplyChain: {
                 totalSuppliers,
                 screenedPercent: Math.round(screenedPercent),
                 cocSignedPercent: Math.round(cocPercent),
                 highRiskAuditedPercent: Math.round(highRiskAuditedPercent),
             },
-
-            // Governance section
             governance: {
                 badges,
                 boardEsgOversight: "3 of 7",
@@ -484,15 +519,24 @@ export async function GET(request: NextRequest) {
                 environmentalFines: 0,
                 pendingApprovalsCount,
             },
+            trendData,
         };
 
-        return NextResponse.json(responseData);
+        // Render PDF to stream, convert to blob, then to buffer and base64
+        const doc = React.createElement(DashboardPDFDocument, { data: pdfData });
+        const pdfBlob = await pdf(doc).toBlob();
+        const arrayBuffer = await pdfBlob.arrayBuffer();
+        const pdfBase64 = Buffer.from(arrayBuffer).toString("base64");
+
+        return NextResponse.json({
+            pdfBase64,
+            fileName: `ESG_Dashboard_Report_${organization.name.replace(/\s+/g, "_")}_${year}.pdf`,
+        });
     } catch (error) {
-        console.error("Dashboard Summary API Error:", error);
+        console.error("Dashboard Export PDF Route Error:", error);
         return NextResponse.json(
             { error: "Internal server error" },
             { status: 500 },
         );
     }
 }
-

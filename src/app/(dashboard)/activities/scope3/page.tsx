@@ -1,4 +1,5 @@
 import { Scope3Forms } from "@/components/scope3/Scope3Forms";
+import { SeeFormulaeModal } from "@/components/calculations/SeeFormulaeModal";
 import {
     ScopeActivitiesSection,
     fetchScopeActivitiesPageData,
@@ -30,9 +31,12 @@ export default async function Scope3Page({ searchParams }: Props) {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl sm:text-3xl font-bold">
-                Scope 3: Value Chain Emissions
-            </h1>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <h1 className="text-2xl sm:text-3xl font-bold">
+                    Scope 3: Value Chain Emissions
+                </h1>
+                <SeeFormulaeModal scope="scope3" />
+            </div>
 
             {showActivityForm && <Scope3Forms factors={factors} />}
 

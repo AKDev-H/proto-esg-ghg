@@ -3,11 +3,19 @@ import { auth } from "@/lib/auth";
 import { canManageFactors } from "@/lib/permissions";
 import { FactorsTableClient } from "@/components/emission-factors/FactorsTable.client";
 import type { EmissionFactor } from "@/modules/emission-factors/types";
+import { EmissionScope, Country, Scope3Category, Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
 interface Props {
-    searchParams: Promise<{ page?: string; category?: string }>;
+    searchParams: Promise<{
+        page?: string;
+        category?: string;
+        source?: string;
+        country?: string;
+        scope3Category?: string;
+        unit?: string;
+    }>;
 }
 
 export default async function FactorsPage({ searchParams }: Props) {
@@ -19,15 +27,27 @@ export default async function FactorsPage({ searchParams }: Props) {
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const where = organizationId && !isSuperAdmin
+    const where: Prisma.EmissionFactorWhereInput = organizationId && !isSuperAdmin
         ? { OR: [{ organizationId }, { organizationId: null }] }
         : {};
 
     if (params.category && params.category !== "all") {
-        Object.assign(where, { category: params.category });
+        where.category = params.category as EmissionScope;
+    }
+    if (params.source && params.source !== "all") {
+        where.source = params.source;
+    }
+    if (params.country && params.country !== "all") {
+        where.country = params.country as Country;
+    }
+    if (params.scope3Category && params.scope3Category !== "all") {
+        where.scope3Category = params.scope3Category as Scope3Category;
+    }
+    if (params.unit && params.unit !== "all") {
+        where.activityUnit = params.unit;
     }
 
-    const [factors, total] = await Promise.all([
+    const [factors, total, distinctSources, distinctUnits] = await Promise.all([
         prisma.emissionFactor.findMany({
             where,
             orderBy: [{ category: "asc" }, { activityType: "asc" }],
@@ -35,6 +55,22 @@ export default async function FactorsPage({ searchParams }: Props) {
             take: limit,
         }),
         prisma.emissionFactor.count({ where }),
+        prisma.emissionFactor.findMany({
+            where: organizationId && !isSuperAdmin
+                ? { OR: [{ organizationId }, { organizationId: null }] }
+                : {},
+            select: { source: true },
+            distinct: ['source'],
+            orderBy: { source: 'asc' },
+        }),
+        prisma.emissionFactor.findMany({
+            where: organizationId && !isSuperAdmin
+                ? { OR: [{ organizationId }, { organizationId: null }] }
+                : {},
+            select: { activityUnit: true },
+            distinct: ['activityUnit'],
+            orderBy: { activityUnit: 'asc' },
+        }),
     ]);
 
     const formattedFactors: EmissionFactor[] = factors.map((f) => ({
@@ -61,14 +97,19 @@ export default async function FactorsPage({ searchParams }: Props) {
 
     const canEditFactors = canManageFactors(session?.user?.role);
 
+    const sourcesList = distinctSources.map((s) => s.source).filter(Boolean);
+    const unitsList = distinctUnits.map((u) => u.activityUnit).filter(Boolean);
+
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold">Emission Factors</h1>
             <FactorsTableClient
-                key={`${page}-${params.category ?? "all"}`}
+                key={`${page}-${params.category ?? "all"}-${params.source ?? "all"}-${params.country ?? "all"}-${params.scope3Category ?? "all"}-${params.unit ?? "all"}`}
                 factors={formattedFactors}
                 pagination={pagination}
                 canManageFactors={canEditFactors}
+                sources={sourcesList}
+                units={unitsList}
             />
         </div>
     );

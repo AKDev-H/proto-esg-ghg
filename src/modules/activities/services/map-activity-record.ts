@@ -110,6 +110,8 @@ export function mapEmissionFactor(factor: {
     activityType: string;
     factorValue: unknown;
     activityUnit: string;
+    source: string;
+    country: string;
     scope3Category?: string | null;
 }): EmissionFactorOption {
     return {
@@ -117,6 +119,8 @@ export function mapEmissionFactor(factor: {
         activityType: factor.activityType,
         factorValue: Number(factor.factorValue),
         activityUnit: factor.activityUnit,
+        source: factor.source,
+        country: factor.country,
         scope3Category: factor.scope3Category,
     };
 }
